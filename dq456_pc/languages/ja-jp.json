@@ -608,6 +608,11 @@
   {"key": "debug.catalog_book", "en": "monster book", "text": "モンスター図鑑"},
   {"key": "debug.catalog_backdrop", "en": "battle backdrop: %s", "text": "戦闘の背景：%s"},
   {"key": "debug.catalog_world_at", "en": "world map (in front of %s)", "text": "ワールドマップ（%sの前）"},
-  {"key": "debug.catalog_world_bad", "en": "unknown place on the world map: %s", "text": "ワールドマップ上の不明な場所: %s"}
+  {"key": "debug.catalog_world_bad", "en": "unknown place on the world map: %s", "text": "ワールドマップ上の不明な場所: %s"},
+  {"key": "debug.book_page_bad", "en": "no such page in the monster book: %s", "text": "モンスター図鑑にないページ: %s"},
+  {"key": "debug.book_in", "en": "monster book: %s added", "text": "モンスター図鑑: %sを追加"},
+  {"key": "debug.book_out", "en": "monster book: %s removed", "text": "モンスター図鑑: %sを削除"},
+  {"key": "debug.book_all_in", "en": "monster book: complete", "text": "モンスター図鑑: コンプリート"},
+  {"key": "debug.book_all_out", "en": "monster book: emptied", "text": "モンスター図鑑: 空にした"}
  ]
 }

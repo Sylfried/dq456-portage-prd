@@ -114,3 +114,13 @@ music) are read with the step's: the engine's output cursors are rewound first, 
   `GameStatus::setPlayTime`; DQ IV's adventure record too (battles, victories, wipeouts, escapes, monsters defeated, gold earned, highest damage, title...,
   `status::BattleHistory`'s getters and setters; the chapter's counters are the current chapter's).
 - **Every item × 99**: `HaveItemSack::add(item, 99)` on the bag for every item the game names, the ones the game's own `HaveItemSack::fill` leaves out included.
+
+## Monster book (panel, "Book" tab)
+
+`dq456_pc/debug/book.py`: the book is the game's `status::g_BattleResult`, one entry of 6 bytes per page (times defeated, times its item was obtained, a level byte)
+and a "met" bit per page, the bits the book's completion counts (DQ IV 210 pages, DQ V 202, DQ VI 197). Each page's monster: DQ IV's own table, DQ V / VI
+`BattleResult::getMonsterIndex`; its name is the engine's.
+
+- **One monster**: ticked, it is put in the book through the game's setter (`setEncount` / `setMonsterEncount`), counted defeated once and its item obtained once
+  when it had neither, so its page shows everything; unticked, it is taken out and both counts go back to 0. A search field filters the list.
+- **The whole book**: every page at once (the book at 100 %), or the book emptied.

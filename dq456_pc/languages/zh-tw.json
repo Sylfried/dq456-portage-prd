@@ -608,6 +608,11 @@
   {"key": "debug.catalog_book", "en": "monster book", "text": "怪物圖鑑"},
   {"key": "debug.catalog_backdrop", "en": "battle backdrop: %s", "text": "戰鬥背景：%s"},
   {"key": "debug.catalog_world_at", "en": "world map (in front of %s)", "text": "世界地圖（%s前）"},
-  {"key": "debug.catalog_world_bad", "en": "unknown place on the world map: %s", "text": "世界地圖上的未知地點：%s"}
+  {"key": "debug.catalog_world_bad", "en": "unknown place on the world map: %s", "text": "世界地圖上的未知地點：%s"},
+  {"key": "debug.book_page_bad", "en": "no such page in the monster book: %s", "text": "怪物圖鑑中沒有此頁：%s"},
+  {"key": "debug.book_in", "en": "monster book: %s added", "text": "怪物圖鑑：已新增%s"},
+  {"key": "debug.book_out", "en": "monster book: %s removed", "text": "怪物圖鑑：已移除%s"},
+  {"key": "debug.book_all_in", "en": "monster book: complete", "text": "怪物圖鑑：已完成"},
+  {"key": "debug.book_all_out", "en": "monster book: emptied", "text": "怪物圖鑑：已清空"}
  ]
 }

@@ -93,6 +93,7 @@ jobs:
           python tests/test_smooth_objects.py
           python tests/test_battle_tactics_icons.py
           python tests/test_debug_party.py
+          python tests/test_debug_book.py
           python tests/test_field_followers.py
           python tests/test_opening_credits_scenery.py
           python tests/test_debug_step_calls.py
