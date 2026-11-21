@@ -1865,6 +1865,19 @@ class Engine:
         c = self.core; m = self._title_box()
         if m and c.call(self.E('_ZN8MenuBase6isOpenEv'), m, label='isOpen') & 1: c.call(self.E('_ZN8MenuBase5closeEv'), m, label='close')
 
+    step_calls = None          # (debug panel) () -> [calls to make in this step, right before GameUpdate]: the scene starts, as the scripts make them (startTown, forceBrew...)
+
+    def _step_calls(self):
+        """The step's queued calls (step_calls) -> their packets. Made before GameUpdate, their packets would go on from where the last step left the engine's
+        cursors; GameUpdate rewinds the cursors to the start and writes over them (a fight's music, Global::startBattle's SoundManager::battlePlay, was lost):
+        the cursors are rewound first, as GameUpdate does, and these packets read before it."""
+        calls = self.step_calls() if self.step_calls is not None else None
+        if not calls: return []
+        c = self.core; c.mem_w(self.pk.ci, struct.pack('<Q', c.outp + 4)); c.mem_w(self.pk.cf, struct.pack('<Q', c.outf)); self.pk.begin()
+        for fn in calls: fn()
+        out = self.pk.packets(); self.pk.begin()
+        return out
+
     def _return_to_title_before(self):
         """Before GameUpdate: opens the box. Same sequence of calls as state 5 of the original Settings menu (menuUpdate + 0x1ac): openMessageForMENU, addMessage(0xCBA2F), setYesNo() (cursor on "Yes"),
         setYesNoSuperCancel(false); the player is locked as in the game's menu (PlayerManager::setLock(true), given back by "No")."""
@@ -2165,12 +2178,13 @@ class Engine:
         self.pk.begin()
         if self.scroll_mode is not None or self.hold_messages or self._hold_saved is not None: self.write_scroll_mode()
         self._return_to_title_before()
+        early = self._step_calls()
         r = c.call(self.E('GameUpdate'), held, decl, label='GameUpdate')
         if self._messages_sent: c.mem_w(c.inp, struct.pack('<i', -1)); self._messages_sent = False          # Unity rewrites the list every frame: a message is only valid for the frame in which it is sent
         self._return_to_title_after(); self._end_roll_after(); self._reward_after()
         if MSGDBG: self._log_message()
         if r is None: raise RuntimeError('the engine stopped:\n' + '\n'.join(self.log.lines[-12:]))
-        pkt = self.pk.packets()
+        pkt = early + self.pk.packets()
         if os.environ.get('DQ_PKT') and self.state.part == PART_BATTLE:       # (test) log of the battle packets: frame, [(type, ints...)]
             with open(os.environ['DQ_PKT'], 'a') as fj:
                 fj.write('%d %s\n' % (self.frames, [(t, a[:2]) if t != 22 else (22, a[0], a[1], [round(x, 2) for x in f[:3]], [round(min(f[3 + 5 * i + 2] for i in range(a[1])), 2), round(max(f[3 + 5 * i + 2] for i in range(a[1])), 2), round(min(f[3 + 5 * i + 3] for i in range(a[1])), 2), round(max(f[3 + 5 * i + 3] for i in range(a[1])), 2)]) for t, a, f in pkt if t not in (12, 13, 14)]))

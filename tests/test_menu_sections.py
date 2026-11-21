@@ -4,6 +4,8 @@
 
 1. `_section_target`: while a character's window waits (spells, equipment, status), the next / previous character of the list on the left (type 4) is touched, the last leading to
    the first; hidden and grayed characters are skipped; with no chosen character, or a single one, the page arrows (◀ ▶ of the menu or of another window) instead; nothing: None.
+   A party longer than the list (▲ ▼, gamepad 1 / 2): past the last one shown ▼, before the first ▲ (then the last one of that page is touched, `_section_last`), and the
+   first / last one shown when the chosen one is on another page. (Real-engine check, DQ V save 2 with 7 members: Items, Abel -> ... -> Sancho -> ▼ Nera -> ... and back.)
    `_keyboard_port`: page arrows active (no button): the most recent list, even with a single button ("Sac" alone on the last page of the transfer targets).
 2. `_entries`: a camera key press sends the target once (sound effect for a character, silent page), the held key repeats nothing; the keyboard stays in the character's window
    while the game gives the input to the list (`_keyboard_port`); a menu with no interface keeps the camera keys as directions; the movement keys never change the interface.
@@ -40,10 +42,10 @@ def window(typ, buttons, chars=None):
 @unittest.skipIf(TK is None, 'pyglet / window not importable here: %r' % (ERROR,))
 class Sections(unittest.TestCase):
 
-    def game(self, chars, pages=True, active=LIST, held=()):
+    def game(self, chars, pages=True, active=LIST, held=(), scroll=False):
         j = TK.OnTheGame.game(self, [(0, 0x10, 0.0, 0.0, 10.0, 8.0), (1, 0x10, 0.0, -10.0, 10.0, -2.0)], port=active)
         wins = {LIST: window(8, [(-1, 0x20), (0, 0x10), (1, 0x10)])}
-        if chars is not None: wins[CHARS] = window(4, [(-1, 0x80)], chars)
+        if chars is not None: wins[CHARS] = window(4, [(-1, 0x80)] + ([(-1, 1), (-1, 2)] if scroll else []), chars)
         if pages: wins[PAGES] = window(6, [(-1, 4), (-1, 8)])
         if active not in wins: wins[active] = window(13, [(-1, 0x20)])
         order = {q: i for i, q in enumerate(sorted(wins))}
@@ -52,9 +54,9 @@ class Sections(unittest.TestCase):
         j.engine.input_menus = lambda: sorted(wins, key=lambda q: -order[q])
         j.engine.active_menu = lambda: active
         j.slime_touch_click = lambda x, y: False; j.slime_touch_keys = lambda p, d: (p, d); j.curling_press = lambda x, y: False; j.curling_release = lambda: False; j.sugoroku_click = lambda x, y: False; j.sugoroku_held = lambda p: p          # (no Slime Touch, curling or T'n'T here: window/slime_touch.py, slime_curling.py, sugoroku.py)
-        for name_str in ('_section_target', '_keyboard_port', '_port_for_gamepad', '_page_arrow'):
+        for name_str in ('_section_target', '_keyboard_port', '_port_for_gamepad', '_page_arrow', '_is_character_list', '_character_list_members', '_section_last'):
             setattr(j, name_str, types.MethodType(inspect.getattr_static(WND.Game, name_str), j))
-        j.section_focus = None; j.held = set(held); j._held = lambda a: a in j.held; j.hovered = None
+        j.section_focus = None; j.section_last = None; j.engine.frames = 100; j.held = set(held); j._held = lambda a: a in j.held; j.hovered = None
         j._edges = lambda: {a: False for a in ('menu', 'chat', 'map', 'L', 'R')}; j.rep = {}; j.pad_prev = 0
         return j
 
@@ -89,6 +91,25 @@ class Sections(unittest.TestCase):
         self.assertEqual(self.game([(1, UI.STATE_INVISIBLE, True)])._section_target(LIST, 1), (PAGES, -1, 4))  # a single character: the pages
         all_chosen = [(1, UI.STATE_INVISIBLE, True), (2, UI.STATE_INVISIBLE, True)]                               # (item submenu: every character disabled)
         self.assertEqual(self.game(all_chosen)._section_target(LIST, 1), (PAGES, -1, 4))
+
+    def test_party_longer_than_the_list(self):
+        j = self.game(self.PARTY, scroll=True)
+        self.assertEqual(j._section_target(LIST, 1), (CHARS, 2, 0x10))
+        self.assertEqual(j._section_target(LIST, -1), (CHARS, -1, 1))                                         # before the first one shown: ▲ (no longer the last one of this page)
+        last = [(0, UI.STATE_NORMAL, False), (1, UI.STATE_NORMAL, True), (2, UI.STATE_NORMAL, True), (3, UI.STATE_INVISIBLE, True)]
+        self.assertEqual(self.game(last, scroll=True)._section_target(LIST, 1), (CHARS, -1, 2))                # past the last one shown: ▼
+        other_page = [(1, UI.STATE_NORMAL, True), (2, UI.STATE_GRAYED, True), (3, UI.STATE_NORMAL, True)]      # (the chosen one is on another page)
+        j = self.game(other_page, scroll=True)
+        self.assertEqual(j._section_target(LIST, 1), (CHARS, 1, 0x10)); self.assertEqual(j._section_target(LIST, -1), (CHARS, 3, 0x10))
+
+    def test_back_a_page_then_its_last_member(self):
+        j = self.game(self.PARTY, scroll=True); lines = ['Nera', 'Kicifrot', 'Sac']; j._menu_lines = lambda f: lines
+        self.press(j, 'cam_left')
+        self.assertEqual(j.sent, [(CHARS, 1, -1, 1)]); self.assertEqual(j.section_last[:2], (CHARS, lines))      # ▲ sent, silent; then waits for the page to change
+        j._section_last(j.engine); self.assertEqual(len(j.sent), 1)                                            # (same page still shown)
+        lines = ['Abel', 'Harry', 'Sancho']; j._section_last(j.engine)
+        self.assertEqual(j.sent[-1], (CHARS, 1, 3, 0x10)); self.assertIsNone(j.section_last)                   # its last one shown touched
+        j.section_last = (CHARS, lines, 90); j._section_last(j.engine); self.assertIsNone(j.section_last); self.assertEqual(len(j.sent), 2)          # (given up: too late)
 
     def test_nothing_to_change(self):
         self.assertIsNone(self.game(None, pages=False)._section_target(LIST, 1))

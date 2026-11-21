@@ -606,6 +606,8 @@
   {"key": "debug.catalog_minigame_bad", "en": "mini-game %s: not in this game", "text": "小游戏 %s：本游戏没有"},
   {"key": "debug.catalog_minigame", "en": "mini-game: %s", "text": "小游戏：%s"},
   {"key": "debug.catalog_book", "en": "monster book", "text": "怪物图鉴"},
-  {"key": "debug.catalog_backdrop", "en": "battle backdrop: %s", "text": "战斗背景：%s"}
+  {"key": "debug.catalog_backdrop", "en": "battle backdrop: %s", "text": "战斗背景：%s"},
+  {"key": "debug.catalog_world_at", "en": "world map (in front of %s)", "text": "世界地图（%s前）"},
+  {"key": "debug.catalog_world_bad", "en": "unknown place on the world map: %s", "text": "世界地图上的未知地点：%s"}
  ]
 }

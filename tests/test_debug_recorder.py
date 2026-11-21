@@ -39,7 +39,7 @@ class Engine:
 class Game:
     def __init__(self, replay=None):
         self.engine = Engine(); self.map_name = 'mbk1f1'; self.n_loop = 0; self.t_loop = None; self.acc = 0.0; self.alpha = 1.0; self.height = 720
-        self.sound = type('S', (), {'set_paused': lambda s, on: None})(); self.args = type('A', (), {'settings': None, 'debug_replay': replay})()
+        self.sound = type('S', (), {'set_paused': lambda s, on: None, 'stop_loops': lambda s: setattr(s, 'quieted', getattr(s, 'quieted', 0) + 1)})(); self.args = type('A', (), {'settings': None, 'debug_replay': replay})()
     def _complete_savestate(self): return {'frames': self.engine.frames}
     def _step(self): self.engine.step(0, 0)
     def _apply_savestate(self, d): self.engine.frames = d['frames']

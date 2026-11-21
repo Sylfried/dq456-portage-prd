@@ -14,11 +14,11 @@ import struct
 
 from dq456_pc import games as GM
 from dq456_pc.core import engine as ENGINE
+from dq456_pc.debug.catalog import TEXT, engine_text          # (TEXT: the tests' symbol table)
 from dq456_pc.language import N_, tr
 
 PARTY = '_ZN6status7g_PartyE'
 GAME = '_ZN6status6g_GameE'
-TEXT = {'dq4': '_ZN7TextAPI11extractTextEPci', 'dq5': '_ZN4ardq7TextAPI11extractTextEPci', 'dq6': '_ZN4ardq7TextAPI11extractTextEPci'}
 PLAYER_NAME = 0x5000000                              # TextAPI kind 5: a character's name by number
 CHARACTER_MAX = {'dq4': 64, 'dq5': 0x200, 'dq6': 0x200}          # character numbers tried for names
 HAVE_STATUS = {'dq4': 0x48, 'dq5': 0xb8, 'dq6': 0x94}            # HaveStatus inside HaveStatusInfo
@@ -61,13 +61,7 @@ class Party:
     # --- reading -------------------------------------------------------------------------------------------------------------------------------------------------
     def _core(self): return self.g.engine.core
 
-    def _text(self, kind, number):
-        c = self._core(); f = c.export(TEXT[self.key])
-        if not f: return None
-        buf = c.scratch('debug_party', 256); c.mem_w(buf, b'\0' * 16)
-        c.call(f, buf, kind | number, label='TextAPI::extractText')
-        t = c.read_cstr(buf).decode('utf-8', 'replace').replace(';', '').replace('$', '').strip()
-        return t if t and not t.startswith('<ERR') else None
+    def _text(self, kind, number): return engine_text(self._core(), self.key, kind, number)
 
     def characters(self):
         """[(character number, name)]: every number the game names."""

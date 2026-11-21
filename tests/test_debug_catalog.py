@@ -59,8 +59,8 @@ class Core:
 class Catalog(unittest.TestCase):
     def setUp(self):
         self.g = Game(); self.g.args.debug_port = 0
-        e = self.g.engine; e.core = Core(); e.calls_before = []
-        e._return_to_title_before = lambda: e.calls_before.append('box')
+        e = self.g.engine; e.core = Core()
+        e.run_step_calls = lambda: [fn() for fn in (e.step_calls() or [])]          # (Engine._step_calls: right before GameUpdate)
         e.start_town = lambda name: e.core.calls.append(('startTown', (name,)))
         e.start_field = lambda: e.core.calls.append(('startField', ()))
         self.d = DS.DebugService(self.g); self.c = self.d.catalog
@@ -123,9 +123,8 @@ class Catalog(unittest.TestCase):
         SYMS.update({CT.GO_TO_EXIT[k][1]: 0x930 for k in CT.GO_TO_EXIT}); SYMS.update({CT.GO_TO_EXIT[k][0]: 0x500 for k in CT.GO_TO_EXIT})
         self.assertEqual(self.c.goto_map({'map': 'CAF1'}), {'ok': True})
         self.assertFalse(self.entered('caf1'))                                          # nothing yet: during the next step
-        e._return_to_title_before()                                                     # (Engine.step calls it right before GameUpdate)
-        self.assertEqual(e.calls_before, ['box'])
-        self.assertTrue(self.entered('caf1'))
+        e.run_step_calls()
+        self.assertTrue(self.entered('caf1')); self.assertEqual(self.g.sound.quieted, 1)          # (the looping sound effects of the place left stopped)
         (label, args), = [(l, a) for l, a in e.core.calls if l and 'Town' in l]
         self.assertEqual((args[0], args[2]), (0x500, 0x1001))                           # (the game's own link object, the map's entrance key)
         self.assertEqual(self.c.in_step, [])
@@ -134,11 +133,11 @@ class Catalog(unittest.TestCase):
         e = self.g.engine; c = self.c; c._places = {157: 'caf1'}
         e.state.game_map = 'mbk1f1'; self.g.map_name = 'mbk1f1'
         self.assertEqual(c.battle({'row': 157}), {'ok': True, 'map': 'caf1'})       # from a town: allowed for a boss
-        e._return_to_title_before()
+        e.run_step_calls()
         self.assertTrue(self.entered('caf1'))
         c.tick(); self.assertEqual(c.in_step, [])                                      # (its map not shown yet)
         e.state.game_map = 'caf1'; self.g.map_name = 'caf1'; c.tick()
-        e._return_to_title_before()
+        e.run_step_calls()
         labels = [l for l, a in e.core.calls]
         self.assertIn(('Encount::forceEventBrew', (0x777, 157)), e.core.calls)
         if not ENGINE.ENGINE_V2: self.assertLess(labels.index('BattleScriptManager::setEncountMap'), labels.index('Encount::forceEventBrew'))
@@ -154,10 +153,10 @@ class Catalog(unittest.TestCase):
         core.stage_encount = 1; core.ram[on] = 0; self.assertIn(tr(N_('debug.catalog_story_no_random')), c.battle({'row': ''})['error'])   # switched off by a script
         core.ram[on] = 1
         r = c.battle({'row': ''}); self.assertEqual(r, {'ok': True, 'row': 86})       # the place's own group, as a random encounter
-        e._return_to_title_before()
+        e.run_step_calls()
         self.assertIn(('Encount::forceEncount', (0x777,)), core.calls)
         r = c.battle({'row': '12'}); self.assertEqual(r, {'ok': True, 'row': 12})      # another group: Encount + 8 for that fight...
-        e._return_to_title_before()
+        e.run_step_calls()
         self.assertEqual(struct.unpack_from('<i', core.ram, 0x777 + CT.ENCOUNT_ZONE)[0], 12)
         e.state.part = ENGINE.PART_BATTLE; c.tick()                                    # ... then the place's again
         self.assertEqual(struct.unpack_from('<i', core.ram, 0x777 + CT.ENCOUNT_ZONE)[0], 86)
@@ -187,8 +186,18 @@ class Catalog(unittest.TestCase):
         self.assertIn('error', self.c.give_gold({'amount': '1.5'}))
 
     def test_item_names(self):
-        """the names of the game's texts (an MPT0 file: "@4" the name, ";" a line break of the patch removed)"""
-        texts = ['', '@0F@2la @3une @4massue de ;chêne@5les @6', '@0M@2le @3un @4@5']
+        """the names the engine gives (TextAPI::extractText, by the game's own number: entry 0 of the file is item 1's), ";" and "$" removed, "<ERR" left out;
+        as many numbers as the message file has entries, plus one"""
+        core = self.g.engine.core; SYMS[CT.TEXT[GM_key()]] = 0x930
+        names = {1: 'bâton de ;cyprès', 2: 'massue de chêne', 3: 'épée lon$gue', 4: 'not tried'}
+        def call(a, *args, label=None):
+            if label == 'TextAPI::extractText':
+                kind, n = args[1] & 0xf000000, args[1] & 0xffffff
+                t = names.get(n, '<ERR %x.%d>' % (kind, n)) if kind == CT.ITEM_TEXT else 'monster %d' % n
+                core.ram[args[0]:args[0] + 64] = (t.encode() + b'\0').ljust(64, b'\0')
+            return 0
+        core.call = call; core.read_cstr = lambda a: bytes(core.ram[a:core.ram.index(0, a)])
+        texts = ['@4bâton de ;cyprès@5', '@0F@2la @3une @4massue de ;chêne@5les @6', '@0M@2le @3un @4@5']
         enc = [t.encode() + b'\0' * (-len(t.encode()) % 4) for t in texts]; table = b''; body = b''
         for i, t in enumerate(texts):
             table += struct.pack('<3H', i, len(t.encode()), len(body) // 4); body += enc[i]
@@ -196,8 +205,11 @@ class Catalog(unittest.TestCase):
         mpt = b'MPT0' + struct.pack('<6I', 0, 0, 2, len(texts), 28, len(table)) + table + body
         reader = type('R', (), {'read': lambda self, n: mpt})()
         self.g.engine.core.fs.names[CT.ITEM_NAMES] = reader
-        self.assertEqual(self.c.items(), [(1, 'massue de chêne')])
-        self.assertEqual(self.c.info()['items'], [(1, 'massue de chêne')])
+        self.assertEqual(self.c.items(), [(1, 'bâton de cyprès'), (2, 'massue de chêne'), (3, 'épée longue')])
+        self.assertEqual(self.c.info()['items'], self.c.items())
+        self.g.engine.core.fs.names[CT.MONSTER_NAMES] = reader; self.c._monsters = None          # (info() above read them without the file)
+        self.assertEqual(self.c.monster_names(), {n: 'monster %d' % n for n in range(4)})
+        del SYMS[CT.TEXT[GM_key()]]
 
     def test_any_group_here_minigames_book_backdrop(self):
         """any encounter row fought here (Encount::forceBrew, the scripts' ordinary fight, during the next step), a mini-game or the monster book from here, the backdrop drawn
@@ -207,15 +219,15 @@ class Catalog(unittest.TestCase):
         if key in CT.MINIGAME_CMD: SYMS[CT.MINIGAME_CMD[key][0]] = 0x96c
         e.state.part = ENGINE.PART_TOWN
         self.assertEqual(self.c.battle_here({'row': '12'}), {'ok': True, 'row': 12})
-        e._return_to_title_before()
+        e.run_step_calls()
         self.assertIn(('Encount::forceBrew', (0x777, 12)), core.calls)
         self.assertIn('error', self.c.battle_here({'row': 'x'}))
-        self.assertEqual(self.c.minigame({'id': 'poker'}), {'ok': True}); e._return_to_title_before()
+        self.assertEqual(self.c.minigame({'id': 'poker'}), {'ok': True}); e.run_step_calls()
         if key in CT.MINIGAME_CMD:
             (label, args), = [c for c in core.calls if c[0] == CT.MINIGAME_CMD[key][0]]
             self.assertEqual(struct.unpack_from('<i', core.ram, args[0] + CT.MINIGAME_CMD[key][1])[0], 0)          # (0: poker)
         self.assertIn('error', self.c.minigame({'id': 'nothing'}))
-        self.assertEqual(self.c.open_book(), {'ok': True}); e._return_to_title_before()
+        self.assertEqual(self.c.open_book(), {'ok': True}); e.run_step_calls()
         self.assertIn(('Global::startBook', (0x880,)), core.calls)
         self.c._backdrops = ['btl_pl_d', 'btlcc1_d']
         self.assertEqual(self.c.set_backdrop({'name': 'BTLCC1_D'}), {'ok': True}); self.assertEqual(self.g.battle_scenery, 'btlcc1_d')

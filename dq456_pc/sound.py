@@ -539,11 +539,16 @@ class Sound:
         """Loading a savestate: the music restarts from the recorded moment (without `info`, an old savestate: from the start of `default`, the last engine command).
         The looping sound effects in progress are stopped (the restored engine would never send their stop: they have no time limit) and the fanfare no longer holds anything back."""
         self.stop_bgm(); self._drop_layer(); self.bgm_queue.clear(); self.fanfare = None
-        for x in [x for x in self.sfx if x.looping]: self.stop_sfx(x.ident)
+        self.stop_loops()
         if info is None:
             if default is not None: self.play_bgm(default)
             return
         self.play_bgm(info['id'], float(info.get('pos') or 0.0)); self.resume = info.get('reprise'); self.bgm_level = float(info.get('level', 1.0)); self._apply_volumes()
+
+    def stop_loops(self):
+        """Stops the looping sound effects in progress (a clock's ticking, a machine's hum): after a jump the engine never sends their stop (savestate loaded,
+        the debug panel's map or story step)."""
+        for x in [x for x in self.sfx if x.looping]: self.stop_sfx(x.ident)
 
     def stop_bgm(self):
         self.bgm_request = None; self.bgm_id = None

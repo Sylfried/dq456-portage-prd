@@ -156,7 +156,7 @@ class Game(FullScreenMixin, CameraMixin, FieldMixin, BattleMixin, TitleMixin, St
                 e.sounds = [x for x in e.sounds if x[0] == 37][-1:]      # the loading sound effects are lost, the map music stays
         self.n = 0; self._reported_hooks = 0; self._heap_level = 0; self.dt_engine = 0.0; self.pad_prev = 0; self.rep = {}; self.prev_action = {}
         self.msg_key = None; self.msg_img = None; self.msg_h = 0
-        self.lbl_menu = {}; self.menu_to_release = None; self.section_focus = None; self.scenery_ticks = None; self._scenery_acc = 0.0; self._replay_skipping = False; self._closing_game_menu = 0
+        self.lbl_menu = {}; self.menu_to_release = None; self.section_focus = None; self.section_last = None; self.scenery_ticks = None; self._scenery_acc = 0.0; self._replay_skipping = False; self._closing_game_menu = 0
         self.ui_render = None; self.ui_g = None; self.ui_msg = None; self.canvas_key = None
         self._init_ui()          # (simple menus only as a fallback, when the original layout is missing or unusable:; the test option --ui-simple was removed)
         self._preload_first_scene()

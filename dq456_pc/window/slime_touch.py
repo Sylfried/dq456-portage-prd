@@ -1,7 +1,8 @@
 """Dragon Quest V's Slime Touch (the casino's mini-game): drawing and input of SlimeTouchPort (the logic is in core/slime_touch.py).
 
 While the port exists the scene camera is off and the orthographic camera clears its view to black: the window shows that layer alone (on the blurred scenery of the casino instead
-of the black, like the casino's other games: backdrop.py), the phone's whole height across the window's height (like the title screen), with the engine's meshes of that layer (the board, the slimes, the hammer) and the CG prefabs that the engine draws this frame (countdown, "GAME OVER",
+of the black, like the casino's other games: backdrop.py), the game's screen across the window's whole height (its 384 units; the phone's black margins above and below it left out),
+with the engine's meshes of that layer (the board, the slimes, the hammer) and the CG prefabs that the engine draws this frame (countdown, "GAME OVER",
 sweat drops, target boards), sorted like Unity's transparent queue: render queue, then farthest first.
 Input: a click in one of the eight boxes (a touch on the phone); with the keys or a gamepad, a direction (diagonals included) and A hit the box on that side of the board's middle.
 """
@@ -10,14 +11,17 @@ from pyglet import gl
 from dq456_pc.core import slime_touch as ST
 from dq456_pc.core import engine as ENGINE
 from dq456_pc.world import fbx as FX
-from dq456_pc.window.constants import ORTHO_HALF_WIDTH, ASPECT_PORTRAIT
 
 QUEUE = 3850                     # render queue of Custom/DssaCharaTransparent (the CG prefabs' shader)
+SCREEN_HALF = (128.0, 192.0)     # half the width and height of the game's screen in the layer (the board's mesh: 256 x 384 units, centered; the phone's height, 2 x ORTHO_HALF_WIDTH
+                                 # / ASPECT_PORTRAIT = 457 units, adds black margins above and below it, which left the game small in the middle of the window)
 
 
-def half_height():
-    """Half the height of the window in units of the orthographic layer: the phone's whole height (its short side is 2 x ORTHO_HALF_WIDTH)."""
-    return ORTHO_HALF_WIDTH / ASPECT_PORTRAIT
+def half_height(aspect=None):
+    """Half the height of the window in units of the orthographic layer: the game's screen across the window's whole height; a window narrower than the screen
+    (`aspect` = width / height) shows its whole width."""
+    hh = SCREEN_HALF[1]
+    return max(hh, SCREEN_HALF[0] / aspect) if aspect else hh
 
 
 def model_vertices(m, clip, t, shift):
@@ -72,7 +76,7 @@ class SlimeTouchMixin:
         return self._st_pictures[name_str]
 
     def _st_layer_matrix(self, aspect):
-        hh = half_height(); hw = hh * aspect
+        hh = half_height(aspect); hw = hh * aspect
         M = np.zeros((4, 4)); M[0, 0] = 1.0 / hw; M[1, 1] = 1.0 / hh; M[3, 3] = 1.0
         return M
 
@@ -121,7 +125,7 @@ class SlimeTouchMixin:
     def slime_touch_click(self, x, y):
         """A click (window pixel, pyglet) during the Slime Touch: the box under it, if the boxes are on. -> True if a box was hit."""
         if not self._slime_touch_up(): return False
-        lx, ly = ST.window_to_layer(x, y, self.width, self.height, half_height())
+        lx, ly = ST.window_to_layer(x, y, self.width, self.height, half_height(self.width / max(1, self.height)))
         return self.engine.slime_touch_press(lx, ly)
 
     def slime_touch_keys(self, p, decl):

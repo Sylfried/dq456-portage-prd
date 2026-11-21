@@ -148,6 +148,18 @@ class OnTheGame(unittest.TestCase):
         j.on_mouse_press(150, 150, pyglet.window.mouse.LEFT, 0); j.on_mouse_press(350, 350, pyglet.window.mouse.LEFT, 0)
         self.assertEqual(j.sound.sfx, []); self.assertEqual(j.press_state, (3, -1, 2))
 
+    def test_down_arrow_of_a_list_is_not_the_map_mode(self):
+        """The ▼ of the party list (field menu, a party longer than the list) has no number and gamepad 2, like the map's "mode" button: it was taken for it outside the
+        map and went nowhere. Only the map's window toggles the view; elsewhere the button is sent to its window."""
+        def release(map_ports):
+            j = self.game([(-1, 2, 0, 0, 1, 1)]); j._map_ports = lambda: map_ports; j._zones = lambda p: [(-1, 2, 300, 300, 400, 400, 4.0, 8)] if p == 3 else []
+            j.bar_gesture = types.SimpleNamespace(in_progress=False); j.curling_release = lambda: False; j._replay = None; j.terrain_press = None
+            j.hud.dpad_on = False; j.hud.press_state = None; j._direct_button = lambda p, pad: 0; j.map_toggle = False
+            j.on_mouse_release = types.MethodType(inspect.getattr_static(WND.Game, 'on_mouse_release'), j)
+            j.on_mouse_press(350, 350, pyglet.window.mouse.LEFT, 0); j.on_mouse_release(350, 350, pyglet.window.mouse.LEFT, 0); return j
+        j = release({}); self.assertEqual(j.sent[-1], (3, 1, -1, 2)); self.assertFalse(j.map_toggle)
+        j = release({22: 3}); self.assertTrue(j.map_toggle); self.assertEqual(j.sent, [])
+
     # ---- keyboard: menu with a local cursor (one-column list of A buttons)
     ENTRIES = [(0, 0x10, 0, 100, 50, 120), (1, 0x10, 0, 70, 50, 90), (2, 0x10, 0, 40, 50, 60)]
 

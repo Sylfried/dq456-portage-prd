@@ -47,7 +47,10 @@ STAGE_ENCOUNT = {'dq4': ('_ZN6status7g_StageE', '_ZNK6status11StageStatus9isEnco
                  'dq5': ('_ZN6status16g_StageAttributeE', '_ZNK6status14StageAttribute9isEncountEv'),
                  'dq6': ('_ZN6status16g_StageAttributeE', '_ZNK6status14StageAttribute9isEncountEv')}
 FORCE_ENCOUNT = {'dq4': '_ZN7Encount12forceEncountEv', 'dq5': '_ZN3btl7Encount12forceEncountEv', 'dq6': '_ZN3btl7Encount12forceEncountEv'}
-ITEM_NAMES = 'assets/msg/en/b1000000.mpt'              # item names (entry = item number; "@4" the name)
+ITEM_NAMES = 'assets/msg/en/b1000000.mpt'              # item names: how many there are (the names themselves are the engine's, see engine_text)
+TEXT = {'dq4': '_ZN7TextAPI11extractTextEPci', 'dq5': '_ZN4ardq7TextAPI11extractTextEPci', 'dq6': '_ZN4ardq7TextAPI11extractTextEPci'}
+ITEM_TEXT, MONSTER_TEXT = 0x4000000, 0x6000000       # TextAPI kinds: an item's name, a monster's name, by the game's own number (the message files are not numbered
+                                                     # alike: an item's name is in entry number - 1, a DQ V / VI monster's too, a DQ IV monster's in entry number)
 GIVE_ITEM = {'dq4': ('_ZN6status7g_PartyE', '_ZN6status11PartyStatus8giveItemEi'),          # PartyStatus::giveItem(item) on g_Party; DQ V / VI: a static function, the item in w0
              'dq5': (None, '_ZN6status18PartyStatusUtility8giveItemEi'), 'dq6': (None, '_ZN6status18PartyStatusUtility8giveItemEi')}
 SET_GOLD = {'dq4': ('_Z12cmd_set_goldP16CommandParameter', 4), 'dq5': ('_Z10cmdSetGoldPv', 0), 'dq6': ('_ZN6script10cmdSetGoldEPv', 0)}          # the scripts' "gold" command: its two
@@ -60,7 +63,7 @@ MINIGAMES = {'dq4': (('poker', 'cmd', 0), ('slots', 'cmd', 1)),
              'dq6': (('poker', 'casino', 0), ('slots', 'casino', 1), ('curling', 'global', '_ZN6Global12startCurlingEv'))}
 MINIGAME_CMD = {'dq4': ('_Z13cmd_mini_gameP16CommandParameter', 4), 'dq5': ('_Z11cmdMiniGamePv', 0)}          # (function, offset of the game number in its block)
 START_BOOK = '_ZN6Global9startBookEv'                                   # copies of an item given at once
-MONSTER_NAMES = 'assets/msg/en/b1002000.mpt'           # monster names (entry = monster number; "@4" the name; the French patch writes its texts in the English slot)
+MONSTER_NAMES = 'assets/msg/en/b1002000.mpt'           # monster names: how many there are (the French patch writes its texts in the English slot)
 ARRIVAL_STEPS = 900                                   # a boss's map must be shown, faded in and the player free within this many engine steps
 MAP_LINK = 'assets/map/map_link.bin'                  # the game's links between maps (doors, stairs, exits): DQ IV by map name (NAME, DATA, HASH), DQ V / VI by map number (DATA, INDX)
 FLOOR_LIST = 'assets/leveldata/%sds_floor_list.dat'   # DQ V / VI: map number (u16) and name (+ 4) of every map
@@ -69,6 +72,11 @@ FIELD_NUMBERS = (999, 9999)
 GO_TO_EXIT = {'dq4': ('_ZN3cmn14g_extraMapLinkE', '_ZN3cmn12ExtraMapLink16setExtraExitTownEPKci'),          # the game's own "go to that map, at that link" (floor exits,
               'dq5': ('_ZN3cmn14g_extraMapLinkE', '_ZN3cmn12ExtraMapLink16setExtraExitTownEii'),             # Evac): StageLink::setTownExitIndex(key), Global::startTown(map), the
               'dq6': ('_ZN3cmn14g_BasicMapLinkE', '_ZN3cmn12BasicMapLink24setDirectLinkTownSurfaceEii')}     # link's arrival state, the player locked until he has arrived (DQ IV: by name)
+FIELD_TYPE = {'dq4': ('_ZN3cmn14g_extraMapLinkE', '_ZN3cmn12ExtraMapLink20getFieldTypeBySymbolEi'),          # the world map a place's symbol is on (the game's
+              'dq5': ('_ZN3cmn14g_extraMapLinkE', '_ZN3cmn12ExtraMapLink20getFieldTypeBySymbolEi'),          # field type: DQ IV 3 worlds, DQ V 4, DQ VI 4)
+              'dq6': ('_ZN3cmn14g_BasicMapLinkE', '_ZN3cmn12BasicMapLink20getFieldTypeBySymbolEi')}
+SYMBOL_MASK = {'dq4': 0xfff, 'dq5': 0xffff, 'dq6': 0xffff}           # a link key to the world map: the place's symbol, its kind above (0x7000 DQ IV, 0x70000 DQ V / VI)
+ARRIVAL = 'Arrivée : '                                                # (the story steps' names of a first arrival somewhere)
 GO_TO_FIELD = {'dq4': ('_ZN3cmn14g_extraMapLinkE', '_ZN3cmn12ExtraMapLink17setExtraExitFieldEiRN3dss12Fix32Vector3E'),      # the game's own "out to the world map at
                'dq5': ('_ZN3cmn14g_extraMapLinkE', '_ZN3cmn12ExtraMapLink17setExtraExitFieldEiRN2ar12Fix32Vector3E'),       # that symbol" (Evac): StageLink::setFieldSymbolIndex,
                'dq6': ('_ZN3cmn14g_BasicMapLinkE', '_ZN3cmn12BasicMapLink20setDirectFieldSymbolEiRN2ar12Fix32Vector3E')}    # the world of that symbol, Global::startField
@@ -105,6 +113,17 @@ def dq4_steps(files):
             try: out[step] = (name.decode('utf-8'), r[0x93:0x9c].split(b'\0')[0].decode('ascii').lower() or None)
             except UnicodeDecodeError: pass
     return out
+
+
+def engine_text(core, key, kind, number):
+    """The name the game shows for (kind, number): TextAPI::extractText(buffer, kind | number), what its name macros call; ";" (the patch's line break) and
+    "$" (break with a hyphen) removed. None when the game has no such name ("<ERR ...>") or no such function."""
+    f = core.export(TEXT[key])
+    if not f: return None
+    buf = core.scratch('engine_text', 256); core.mem_w(buf, b'\0' * 16)
+    core.call(f, buf, kind | number, label='TextAPI::extractText')
+    t = core.read_cstr(buf).decode('utf-8', 'replace').replace(';', '').replace('$', '').strip()
+    return t if t and not t.startswith('<ERR') else None
 
 
 def mpt_entries(data):
@@ -187,6 +206,15 @@ def world_exits(links):
     return out
 
 
+def place_name(maps, label):
+    """(name, map) of a place on the world map that `maps` lead out to: the first arrival among their story steps' names (`label` {map: first step's name}),
+    else the first named one (its place, without the parenthesis), else its first map."""
+    named = [(label[m], m) for m in sorted(maps) if m in label]
+    for n, m in named:
+        if n.startswith(ARRIVAL): return n[len(ARRIVAL):], m
+    return (named[0][0].split(' (')[0], named[0][1]) if named else (min(maps), min(maps))
+
+
 def flag_bits(raw):
     """128 bytes of a GameFlag -> sorted numbers of the switches that are on (bit n: word n >> 5, bit n & 31, little-endian)."""
     words = struct.unpack('<%dI' % (len(raw) // 4), raw)
@@ -208,14 +236,7 @@ class Catalog:
         self.d = service; self.g = service.g; self.key = GM.profile().key
         self.in_step = []                                 # calls to make during the next engine step (just before GameUpdate)
         self._steps = None; self._maps = None; self._bosses = None
-        eng = self.g.engine; before = eng._return_to_title_before
-        def before_update():
-            before()
-            calls, self.in_step = self.in_step, []
-            for fn in calls:
-                try: fn()
-                except Exception as ex: self.d.note('catalog: %s' % ex)
-        eng._return_to_title_before = before_update        # (Engine.step calls it right before GameUpdate, after the packet log is reset)
+        self.g.engine.step_calls = self._take_in_step        # (Engine.step makes them right before GameUpdate and keeps their packets)
         self.pending = None                               # a boss waiting for its map: (row, map, engine frame of the request)
         self.restore = None                               # an ordinary fight of another row than the place's: (the place's row, engine frame of the request)
         service.ticks.append(self.tick)
@@ -223,6 +244,16 @@ class Catalog:
         service.panel_commands.update({'goto_map': self.goto_map, 'goto_world': self.goto_world, 'story_step': self.story_step, 'flag': self.set_flag, 'battle': self.battle,
                                          'give_item': self.give_item, 'gold': self.give_gold, 'battle_here': self.battle_here, 'minigame': self.minigame, 'book': self.open_book,
                                          'backdrop': self.set_backdrop})
+
+    def _take_in_step(self):
+        """The calls queued for this step (Engine.step_calls), each one's error noted instead of stopping the step."""
+        calls, self.in_step = self.in_step, []
+        def guarded(fn):
+            def run():
+                try: fn()
+                except Exception as ex: self.d.note('catalog: %s' % ex)
+            return run
+        return [guarded(fn) for fn in calls]
 
     # --- reading ---------------------------------------------------------------------------------------------------------------------------------------------
     def maps(self):
@@ -262,13 +293,18 @@ class Catalog:
 
     def start_town(self, name):
         """The map, the hero at its most obvious entrance, as the game sends him through a link (GO_TO_EXIT; key -1, a map without link: at its origin).
-        Global::startTown(name) alone when DQ V / VI's map number is unknown."""
-        key = self.entrances().get(name, -1); core = self.g.engine.core; obj, fn = GO_TO_EXIT[self.key]
+        Global::startTown(name) alone when DQ V / VI's map number is unknown. The looping sound effects of the place left are stopped (quiet)."""
+        self.quiet(); key = self.entrances().get(name, -1); core = self.g.engine.core; obj, fn = GO_TO_EXIT[self.key]
         if self.key == 'dq4': where = core.cstr(name.encode())
         else:
             where = self._numbers.get(name)
             if where is None: self.g.engine.start_town(name); return
         core.call(core.export(fn), core.export(obj), where, key & 0xffffffff, label=fn)
+
+    def quiet(self):
+        """Stops the looping sound effects in progress (Sound.stop_loops): a jump skips the scripts that would have stopped them (DQ V's ticking clock at the start)."""
+        s = getattr(self.g, 'sound', None)
+        if s is not None: s.stop_loops()
 
     def boss_places(self):
         """{encounter row: map} of the fights the scripts start (the script file is the map's: `assets/script/<map>.bin`; the map that starts it most often).
@@ -311,29 +347,25 @@ class Catalog:
             self._encounters = [(row, [names.get(m, str(m)).replace('$', '') for m in sorted(set(slots)) if m != RN.NONE]) for row, slots in sorted(cat.zones.items())] if cat else []
         return self._encounters
 
+    def _engine_names(self, kind, file):
+        """{number: name} of every number the engine names (engine_text), up to one past the last entry of the game's message file for that kind."""
+        try:
+            fs = self.g.engine.core.fs; last = max(mpt_entries(fs.names[file].read(file)), default=-1)
+        except Exception: return {}
+        core = self.g.engine.core; out = {}
+        for n in range(last + 2):
+            t = engine_text(core, self.key, kind, n)
+            if t: out[n] = t
+        return out
+
     def monster_names(self):
-        """{monster number: name} from the game's texts (`assets/msg/en/b1002000.mpt`, entry = monster number; the French texts of the patch), {} if unreadable."""
-        if getattr(self, '_monsters', None) is None:
-            self._monsters = {}
-            try:
-                fs = self.g.engine.core.fs; n = MONSTER_NAMES; d = fs.names[n].read(n)
-                for idx, text in mpt_entries(d).items():
-                    m = re.search(r'@4([^@]*)', text)
-                    if m: self._monsters[idx] = m.group(1).replace(';', '')
-            except Exception: pass
+        """{monster number: name}, the names the game shows (the French patch's), {} if unreadable."""
+        if getattr(self, '_monsters', None) is None: self._monsters = self._engine_names(MONSTER_TEXT, MONSTER_NAMES)
         return self._monsters
 
     def items(self):
-        """[(item number, name)] from the game's texts (`assets/msg/en/b1000000.mpt`, entry = item number; the French texts of the patch), [] if unreadable."""
-        if getattr(self, '_items', None) is None:
-            self._items = []
-            try:
-                fs = self.g.engine.core.fs; n = ITEM_NAMES; d = fs.names[n].read(n)
-                for idx, text in sorted(mpt_entries(d).items()):
-                    m = re.search(r'@4([^@]*)', text)
-                    name = m.group(1).replace(';', '').replace('$', '').strip() if m else ''
-                    if idx and name: self._items.append((idx, name))
-            except Exception: pass
+        """[(item number, name)], the names the game shows (the French patch's), [] if unreadable; number 0 (no item) left out."""
+        if getattr(self, '_items', None) is None: self._items = sorted((n, t) for n, t in self._engine_names(ITEM_TEXT, ITEM_NAMES).items() if n)
         return self._items
 
     def flags(self):
@@ -345,7 +377,7 @@ class Catalog:
 
     def info(self, q=None):
         if q and q.get('only') == 'flags': return {'map': self.g.engine.state.game_map, 'flags': self.flags()}          # (what changes: asked again while the tab is open)
-        return {'game': self.key, 'map': self.g.engine.state.game_map, 'maps': self.maps(), 'steps': self.steps(), 'flags': self.flags(),
+        return {'game': self.key, 'map': self.g.engine.state.game_map, 'maps': self.maps(), 'worlds': self.worlds(), 'steps': self.steps(), 'flags': self.flags(),
                 'bosses': self.bosses(), 'items': self.items(), 'encounters': self.encounters(), 'minigames': [m[0] for m in MINIGAMES.get(self.key, ())],
                 'backdrops': self.backdrops(), 'backdrop': getattr(self.g, 'battle_scenery', None),
                 'in_battle': self.g.engine.state.part == ENGINE.PART_BATTLE}
@@ -383,16 +415,39 @@ class Catalog:
         self.d.note(tr(N_('debug.catalog_gold')) % amount)
         return {'ok': True}
 
+    def worlds(self):
+        """[(world, [(link key, place, map)])]: the game's world maps (the field type of each place's symbol, FIELD_TYPE) and on each the places that maps
+        lead out to (world_exits), named by place_name, sorted by name."""
+        if getattr(self, '_worlds', None) is None:
+            self.entrances(); core = self.g.engine.core; obj, fn = FIELD_TYPE[self.key]; f = core.export(fn); label = {}; places = {}; by = {}
+            for _n, name, m in self.steps():
+                if m and name and m not in label: label[m] = name
+            for m, k in self._exits.items(): places.setdefault(k, []).append(m)
+            for k, maps in sorted(places.items()):
+                t = core.call(f, core.export(obj), k & SYMBOL_MASK[self.key], label=fn) if f else 0
+                by.setdefault(t or 0, []).append((k,) + place_name(maps, label))
+            self._worlds = [(t, sorted(v, key=lambda p: (p[1].lower(), p[2]))) for t, v in sorted(by.items())]
+        return self._worlds
+
     def goto_world(self, c):
-        """The world map, the hero in front of the place he is in (or the nearest place that leads out to it), as the game's Evac does (GO_TO_FIELD);
-        Global::startField() alone from the world map or from a place no link joins to it."""
-        self.entrances(); here = self.g.engine.state.game_map if self.g.engine.state.part == ENGINE.PART_TOWN else None
-        key = self._exits.get(here); core = self.g.engine.core
+        """The world map, the hero in front of the place `symbol` (a link key of worlds(): any world of the game), or else of the place he is in (or the nearest
+        place that leads out to it), as the game's Evac does (GO_TO_FIELD); Global::startField() alone from the world map or from a place no link joins to it."""
+        self.entrances(); core = self.g.engine.core; chosen = c.get('symbol') not in (None, '')
+        if chosen:
+            try: key = int(c['symbol'])
+            except (TypeError, ValueError): return {'error': tr(N_('debug.catalog_world_bad')) % c.get('symbol')}
+            place = next((p for _t, ps in self.worlds() for k, p, _m in ps if k == key), None)
+            if place is None: return {'error': tr(N_('debug.catalog_world_bad')) % key}
+            note = tr(N_('debug.catalog_world_at')) % place
+        else:
+            here = self.g.engine.state.game_map if self.g.engine.state.part == ENGINE.PART_TOWN else None; key = self._exits.get(here)
+            note = tr(N_('debug.catalog_world')) if key is None else tr(N_('debug.catalog_world_from')) % here
         def go():
+            self.quiet()
             if key is None: self.g.engine.start_field(); return
             obj, fn = GO_TO_FIELD[self.key]; pos = core.scratch('field_pos', 12); core.mem_w(pos, bytes(12))
-            core.call(core.export(fn), core.export(obj), key & (0xfff if self.key == 'dq4' else 0xffff), pos, label=fn)
-        self.in_step.append(go); self.d.note(tr(N_('debug.catalog_world')) if key is None else tr(N_('debug.catalog_world_from')) % here)
+            core.call(core.export(fn), core.export(obj), key & SYMBOL_MASK[self.key], pos, label=fn)
+        self.in_step.append(go); self.d.note(note)
         return {'ok': True}
 
     def story_step(self, c):

@@ -68,6 +68,7 @@ jobs:
           python tests/test_sound_failures.py
           python tests/test_full_screen_effects.py
           python tests/test_keyboard_sfx.py
+          python tests/test_menu_sections.py
           python tests/test_keyboard_reach.py
           python tests/test_loading_bar.py
           python tests/test_game_shaders.py
@@ -94,6 +95,7 @@ jobs:
           python tests/test_debug_party.py
           python tests/test_field_followers.py
           python tests/test_opening_credits_scenery.py
+          python tests/test_debug_step_calls.py
           python tests/test_play_time.py
           python tests/test_savestates_whitelist.py
           python tests/test_heap_alert.py

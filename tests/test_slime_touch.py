@@ -3,6 +3,8 @@
 1. the port's messages: touch boxes on / off, a CG drawn this frame, a CG or a board played (its picture, its clip "Take <track + 1>");
 2. each frame: a CG only advances while drawn; [1, set] when the set of CGs playing changes, [2, set] when some have ended; a loop never ends; bit 31 of a board's play is never sent;
 3. the boxes: a touch inside one (only while they are on), the first one hit; a direction (diagonals included) points at a box; window pixels -> orthographic units;
+   the game's screen (256 x 384 units) across the window's whole height (the phone's black margins above and below left out: it was small in the middle), its whole
+   width in a window narrower than it;
 4. the boards are shifted by (cg - 4) x 42 in x, the other CGs keep their prefab's place;
 5. the interface: the port of category 5 is a SlimeTouchPort in DQ V; its messages go to it; closing it ends it; DQ V / VI's cmd_mesh shows its mesh (MeshChara.SetVisible(true));
 6. (real data) the prefabs `SlimeTouch/...` are read with their clips, `gameover_p` with Unity's built-in Quad.
@@ -99,6 +101,16 @@ class Boxes(unittest.TestCase):
     def test_window_to_layer(self):
         self.assertEqual(ST.window_to_layer(640, 360, 1280, 720, 228.5), (0.0, 0.0))
         x, y = ST.window_to_layer(640, 0, 1280, 720, 228.5); self.assertAlmostEqual(y, -228.5)
+
+    def test_screen_across_the_window_height(self):
+        try:
+            import pyglet
+            pyglet.options['shadow_window'] = False
+            from dq456_pc.window import slime_touch as WST
+        except Exception as ex: self.skipTest('window not importable here: %r' % (ex,))
+        self.assertEqual(WST.half_height(16 / 9), 192.0); self.assertEqual(WST.half_height(), 192.0)
+        x, y = ST.window_to_layer(640, 720, 1280, 720, WST.half_height(16 / 9)); self.assertAlmostEqual(y, 192.0)          # (the top of the window: the top of the board)
+        self.assertAlmostEqual(WST.half_height(0.5), 256.0)                                                               # (narrower than 256 x 384: its whole width, 128 / 0.5)
 
 
 class Interface(unittest.TestCase):

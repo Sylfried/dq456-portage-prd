@@ -259,22 +259,44 @@ class MenusMixin:
             if a(q): return q
         return port
 
+    def _is_character_list(self, q):
+        w = self.ui_g.f.get(q) if self.ui_g else None
+        return w is not None and w.typ == CHARACTER_LIST
+
+    def _character_list_members(self, q):
+        """Numbers of the members (and bag) shown in the character list of port `q` that react to a touch, top to bottom."""
+        w = self.ui_g.f.get(q) if self.ui_g else None
+        if w is None: return []
+        return sorted(n['buttonId'] for n in w.N.values() if n['buttonId'] is not None and n['buttonId'] >= 0 and n['pad'] & 0x10 and w.visible(n['id']) and UI.is_state_active(n['state']))
+
     def _section_target(self, port, d):
         """Camera keys in a game menu (the movement keys go from option to option, the camera keys change the section, looping): what to press for the previous (`d` -1)
         or next (+1) interface. (1) The character: while a character's sub-window waits (spells, equipment, status pages...), the character list on the left (type 4) still takes the
         touch of the other characters (theirs are the buttons in state 0, the chosen one is in state 2; after such a touch the game gives the input back to the list), so the next visible one is touched, the last one leading to the first; grayed
-        ones are skipped. (2) Otherwise the page: the window's ◀ ▶ arrows or those of another window (Pageing type 6, battle lists, ...); the game loops them itself (established on the
+        ones are skipped. A party longer than the list (DQ V / VI, more than 4 with the wagon) shows ▲ ▼ (no number, gamepad 1 / 2): past the last visible one ▼ shows the next ones,
+        before the first ▲ the previous ones (the game loops them), and when the chosen one is on another page the first (or last) visible one is touched.
+        (2) Otherwise the page: the window's ◀ ▶ arrows or those of another window (Pageing type 6, battle lists, ...); the game loops them itself (established on the
         status pages: ◀ on 1/4 shows 4/4). -> (port, button, gamepad) to send, or None (no interface to change: the camera keys stay directions)."""
-        eng = self.engine
-        for q in eng.input_menus():
+        eng = self.engine; inputs = eng.input_menus()
+        for q in inputs:
             w = self.ui_g.f.get(q) if self.ui_g else None
             if w is None or w.typ != CHARACTER_LIST: continue
             members = sorted((n['buttonId'], n['state']) for n in w.N.values() if n['buttonId'] is not None and n['buttonId'] >= 0 and n['pad'] & 0x10 and w.visible(n['id']))
+            scroll = {pd for b, pd, *_ in w.buttons() if b < 0 and pd in (1, 2)}          # (▲ ▼ shown: more members than rows)
+            arrow = 2 if d > 0 else 1
             cur = next((i for i, (b, st) in enumerate(members) if st == UI.STATE_INVISIBLE), None)
-            if cur is None: continue                     # (no character chosen yet: choosing one is an option of the list)
+            if cur is None:
+                if not scroll or inputs[0] == q: continue          # (no character chosen yet, the list itself waits: choosing one is an option of the list)
+                active = [b for b, st in members if UI.is_state_active(st)]          # (the chosen one is on another page of the list)
+                if active: return (q, active[0] if d > 0 else active[-1], 0x10)
+                if arrow in scroll: return (q, -1, arrow)
+                continue
             for k in range(1, len(members)):
-                b, st = members[(cur + d * k) % len(members)]
+                i = cur + d * k
+                if not 0 <= i < len(members) and arrow in scroll: return (q, -1, arrow)          # (past the visible ones: the next / previous ones of the party)
+                b, st = members[i % len(members)]
                 if UI.is_state_active(st): return (q, b, 0x10)
+            if arrow in scroll: return (q, -1, arrow)
             break                                        # (one character only, or the others grayed: the pages)
         pad = 4 if d > 0 else 8
         fl = self._page_arrow(self._port_for_gamepad(port, pad), pad)

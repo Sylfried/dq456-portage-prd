@@ -21,6 +21,7 @@ def physical_key(reg, symbol):
             'A': K.RETURN, 'B': K.BACKSPACE}.get(reg.action_of(symbol), symbol)
 
 
+SECTION_LAST_STEPS = 30          # engine steps the party list has to show its previous page after ▲ (camera key), before its last member is touched
 DIRECT_BUTTONS = (('Make_MonsterEncyclopedia', 0x800), ('Make_ScopeBack', 0x200))          # buttons whose MenuParts + 0x4d is set (MenuPortItemTable): "Action" of the bestiary sheet (the three games), whose key is read
                                                                   # from the game's keys (book::BookMonsterDraw::execute: g_Pad trigger 0x800 -> startAnimation: the monster's attack and its sound effect), never from the
                                                                   # window; the back button of the scope views (DQ V / VI, gamepad 0x200). (The back buttons 0x400 have their own handling.)
@@ -175,6 +176,15 @@ class KeyboardMouseMixin:
             _, _, port, h = max(key_list, key=lambda t: t[:2]); self.press_state = (port, h[0], h[1]); self.press_node = h[3]; button_sfx(h[1]) and self.sound.play_sfx(SFX_BUTTON); return
         if eng.msg_visible: self.click_a = True                                      # touching the message = next page
 
+    def _section_last(self, eng):
+        """After ▲ of the party list (camera key back from the first member shown): once the list shows the previous page, its last member is touched; given up after
+        SECTION_LAST_STEPS engine steps."""
+        q, lines, until = self.section_last; f = eng.ui.f.get(q)
+        if f is None or eng.frames > until: self.section_last = None; return
+        if self._menu_lines(f) == lines: return
+        self.section_last = None; last = self._character_list_members(q)
+        if last: eng.send_menu(q, 1, last[-1], 0x10); self.menu_to_release = q; self.sound.play_sfx(SFX_BUTTON)
+
     def _direct_button(self, port, pad):
         """The game key of the button of gamepad `pad` in the window of `port` if it is one of the direct buttons (DIRECT_BUTTONS), otherwise 0. The button's gamepad can carry other bits
         than the direct key (DQ VI's bestiary "Action"): the key alone goes to the game."""
@@ -261,8 +271,8 @@ class KeyboardMouseMixin:
         if b == -1 and pad == 0x400:                       # back button: MenuPortItem.Update adds 0x400 to the game's keys (the engine closes the map) instead of sending a message to the port
             if h and h[0] == b: self._close_map(self._map_ports())
             return
-        if b == -1 and pad == 2:                           # "map mode" button of the window (type 22, icon 19 / 20 / 2 sent by the engine): gamepad up = changes view (handled with the Carte key)
-            if h and h[0] == b and h[1] == pad: self.map_toggle = True
+        if b == -1 and pad == 2 and port == self._map_ports().get(22):          # "map mode" button of the map's window (type 22, icon 19 / 20 / 2 sent by the engine): gamepad up = changes view (handled with the Carte key);
+            if h and h[0] == b and h[1] == pad: self.map_toggle = True            # (only there: the ▼ of the party list on the left of the field menu has the same number and gamepad, it went nowhere)
             return
         if h and h[0] == b and b == BTN_SAVES and self._is_start_menu(port): self._open_saves(); return                # "Saves" button of the start menu (in place of "Sauv. cloud"): specific to the port
         if b == BTN_LANGUAGE and self._is_start_menu(port):                       # language plate of the start menu: specific to the port, never sent to the engine
@@ -328,6 +338,7 @@ class KeyboardMouseMixin:
         eng = self.engine
         if self.menu_to_release is not None:                 # end of the OK / Cancel press sent to the menu
             eng.send_menu(self.menu_to_release, 1, -1, 0); self.menu_to_release = None
+        elif getattr(self, 'section_last', None) is not None: self._section_last(eng)          # (the test doubles of the window have no such attribute)
         if (pressed & ENGINE.A or fr['menu']) and getattr(eng, 'slot_paying', bool)():          # slot machine paying out its tokens one by one: A (key, click, Enter, Space) is the mobile game's screen tap, which pays the rest at once
             self._camera_forget(); return 0, BTN_TALK                         # (MaterielMenu_SLOT::showEffect reads the tap in g_Pad + 2; the menu window would have taken A)
         replay = getattr(self, '_replay', None) is not None
@@ -373,6 +384,8 @@ class KeyboardMouseMixin:
                     if pressed & cam and self.menu_to_release is None:
                         eng.send_menu(target[0], 1, target[1], target[2]); self.menu_to_release = target[0]
                         if target[2] & 0x10: self.sound.play_sfx(SFX_BUTTON); self.section_focus = (target[0], port)          # (a character is a button the finger touches: sound effect 300, like on mobile; the page arrows are silent)
+                        elif target[1] == -1 and target[2] == 1 and self._is_character_list(target[0]):          # ▲ of the party: the game chooses the first one of the page it shows, the previous one is its last
+                            self.section_last = (target[0], self._menu_lines(eng.ui.f[target[0]]), eng.frames + SECTION_LAST_STEPS)
             self._menu_input(port, decl | (ENGINE.A if fr['menu'] else 0) | (ENGINE.B if fr['map'] and f_port and f_port.get('type') == 25 else 0) | (ENGINE.LEFT if fr['L'] else 0) | (ENGINE.RIGHT if fr['R'] else 0), (1 if fr['L'] else 0) | (2 if fr['R'] else 0))        # L / R = left / right (previous / next page of single-column menus)
             p = decl = 0
         elif self.title_screen is not None:                       # title screen: only A confirms (Space, Enter or touch); no walking, no camera

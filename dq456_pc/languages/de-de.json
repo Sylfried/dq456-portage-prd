@@ -606,6 +606,8 @@
   {"key": "debug.catalog_minigame_bad", "en": "mini-game %s: not in this game", "text": "Minispiel %s: nicht in diesem Spiel"},
   {"key": "debug.catalog_minigame", "en": "mini-game: %s", "text": "Minispiel: %s"},
   {"key": "debug.catalog_book", "en": "monster book", "text": "Monsterbuch"},
-  {"key": "debug.catalog_backdrop", "en": "battle backdrop: %s", "text": "Kampfkulisse: %s"}
+  {"key": "debug.catalog_backdrop", "en": "battle backdrop: %s", "text": "Kampfkulisse: %s"},
+  {"key": "debug.catalog_world_at", "en": "world map (in front of %s)", "text": "Weltkarte (vor %s)"},
+  {"key": "debug.catalog_world_bad", "en": "unknown place on the world map: %s", "text": "unbekannter Ort auf der Weltkarte: %s"}
  ]
 }
