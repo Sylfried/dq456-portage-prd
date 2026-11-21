@@ -70,6 +70,7 @@ jobs:
           python tests/test_keyboard_sfx.py
           python tests/test_menu_sections.py
           python tests/test_keyboard_reach.py
+          python tests/test_square_screens.py
           python tests/test_loading_bar.py
           python tests/test_game_shaders.py
           python tests/test_sound_music_limits.py

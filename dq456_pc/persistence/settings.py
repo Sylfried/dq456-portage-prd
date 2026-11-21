@@ -66,10 +66,13 @@ NAMES = {'LEFT': '←', 'RIGHT': '→', 'UP': '↑', 'DOWN': '↓', 'LSHIFT': N_
 BATTLE_COMMAND_WINDOWS = ('BattleRoot', 'BattleAction', 'BattleTarget', 'BattleEnemyTarget', 'BattlePartyTarget', 'BattleGo', 'BattleIM', 'BattleInfo', 'BattleChangeInfo')
 WINDOW_COMPANIONS = {'BattleChangeButton': 'BattleIM'}          # a window drawn inside another's frame (the party change's Examine / Choose bar, in the bottom of the member list) takes that window's size and place
 COMMANDS_WIDTH = round(510.0 / 459.0, 4)
-# The small screens laid over the game (map overviews, the town's shop list, their buttons; the shop pictures, window/menu_display.py): one and a half times the size of the game's
-# (the three games). The maps and their buttons are editor windows (their default size below); the pictures are not in the editor (fixed size).
-SMALL_SCREEN_SCALE = 1.5
+# The small screens laid over the game (map overviews, the town's shop list, their buttons; the shop pictures, window/menu_display.py): one and a half times the size of the game's,
+# then a quarter more (interface v5; the three games), at most what the screen holds. The maps and their buttons are editor windows (their default size below); the pictures are not in
+# the editor (fixed size). The bestiary (its list, its sheet, its parchment and its monster) a quarter larger than the game's, its parchment kept on the screen.
+SMALL_SCREEN_SCALE = 1.875
+OLD_SMALL_SCREEN_SCALE = 1.5                  # (before interface v5: a small screen still at this size takes the new one)
 SMALL_SCREENS = ('CityMap', 'WorldLargeMap', 'ShopMap', 'MapButton')
+BOOK_SCALE = 1.25
 
 DEFAULT = {
     'language': 'system',            # language of the port's texts and of the game version (APK folder): 'system' (the computer's language) or a language code ('fr-fr'...; language.py)
@@ -109,14 +112,14 @@ DEFAULT = {
     'editor_grid': True,       # interface editor: placement grid displayed (32 x 18 cells)
     'settings_page': 'display',     # the Esc menu's page open on the right when it was last closed (SETTINGS_PAGES); the menu opens on it again (Display the first time)
     'buttons': True,              # touch buttons of the mobile version ("Map", "Controls", "Talk") displayed on screen, outside battle
-    'dpad': True, 'dpad_size': 1.0,      # D-pad (touch gamepad) on screen, usable with the mouse: displayed or not; relative size (in addition to the game's "D-pad size" option)
-    'rotation_bar': True,       # camera rotation bar (at the very bottom of the screen, across its full width) shown and usable with the mouse on the field of towns, dungeons and towers
+    'dpad': False, 'dpad_size': 1.0,      # D-pad (touch gamepad) on screen, usable with the mouse: displayed or not (not by default since interface v5); relative size (in addition to the game's "D-pad size" option)
+    'rotation_bar': False,       # (not by default since interface v5) camera rotation bar (at the very bottom of the screen, across its full width) shown and usable with the mouse on the field of towns, dungeons and towers
     'buttons_size': 1.0, 'buttons_snap': True,       # relative size; positions placed on a grid (snapping)
-    'interface_windows': dict({n: [COMMANDS_WIDTH, 0.0, 0.0] for n in BATTLE_COMMAND_WINDOWS}, **{n: [SMALL_SCREEN_SCALE, 0.0, 0.0] for n in SMALL_SCREENS}),     # game windows: name (Make_* of MenuPortItemTable, or 'msg' for the dialogues) -> [relative size, x offset, y offset as a fraction of the screen]; absent: like the game (see pause.py, interface editor)
+    'interface_windows': dict({n: [COMMANDS_WIDTH, 0.0, 0.0] for n in BATTLE_COMMAND_WINDOWS}, **{n: [SMALL_SCREEN_SCALE, 0.0, 0.0] for n in SMALL_SCREENS}, MonsterEncyclopedia=[BOOK_SCALE, 0.0, 0.0]),     # game windows: name (Make_* of MenuPortItemTable, or 'msg' for the dialogues) -> [relative size, x offset, y offset as a fraction of the screen]; absent: like the game (see pause.py, interface editor)
     'buttons_pos': {},            # button or 'croix' -> [column, row] of its top-left corner on the screen grid (empty: original positions, see hud_mobile.py); the battle speed button has its own (speed_button_pos)
     'vehicle_button': True, 'vehicle_button_size': 1.0, 'vehicle_button_pos': [],      # "Vehicle button" interface (DQ VI's extra field button, core/pad_modes.py): shown or not; relative size; [column, row] of its top-left corner (empty: above Commands, as on mobile)
     'speed_button': True, 'speed_button_size': 1.0, 'speed_button_pos': [],      # "Battle: speed button" interface (split out of "On-screen buttons and D-pad"): shown in battle or not; relative size; [column, row] of its top-left corner (empty: stuck under the bottom box, see hud_mobile.Buttons.anchor)
-    'interface_version': 4,             # version of the default sizes of the game windows (interface_windows): a file saved before (without this key) receives the new default sizes once, except for a window the player has adjusted; v4: the two target lists at the width of the other battle command windows; v2: battle command windows at the width of the dialogues; v3: the small screens (maps, shop list, their buttons) one and a half times larger
+    'interface_version': 5,             # version of the default sizes of the game windows (interface_windows): a file saved before (without this key) receives the new default sizes once, except for a window the player has adjusted; v5: the small screens a quarter larger, the bestiary too, the D-pad and the rotation bar hidden; v4: the two target lists at the width of the other battle command windows; v2: battle command windows at the width of the dialogues; v3: the small screens (maps, shop list, their buttons) one and a half times larger
     'interface_hidden': [],     # interface editor, "Show this interface on screen" = No: names of the game windows (Make_*, or 'msg' for the dialogues) that are not drawn; for the on-screen buttons and D-pad, it is the 'boutons' setting
     'keys_version': 9,               # settings version (v8 -> v9: camera Q / E (A / E in AZERTY) with the arrows as second keys, previous / next page R / T, vehicle command F, for the exact old defaults; v7 -> v8: battle speed 1 (Normal), the old default, -> 0 (Manual); v6 -> v7: shader 4, the old default, -> 0 "None"; v5 -> v6: vignette 0.3, the old default, -> 0): a key list older than v3 is discarded (v3: ZQSD to walk, arrow keys = camera, Space = action); v3 -> v4: "Party chat" = Alt / Alt Gr (if those keys are free), accelerator x1.5 (if running was at the original x2); v4 -> v5: "Menu" = Enter and Tab (if "Menu" still had the old default, Enter alone, and Tab is free); an action added since takes its default key
     'keys': {k: list(v) for k, v in DEFAULT_KEYS.items()},
@@ -325,8 +328,9 @@ class Settings:
                 if d.get('interface_version') != DEFAULT['interface_version'] and isinstance(self.v['interface_windows'], dict):      # old default window sizes -> new ones, once only (afterwards the key is saved and the player's choice prevails): window with no setting or at the old default size (1, 0, 0)
                     fw = dict(self.v['interface_windows'])
                     for n, nv in DEFAULT['interface_windows'].items():
-                        if n not in fw or fw[n] == list(DEFAULT_WINDOW): fw[n] = list(nv)
+                        if n not in fw or fw[n] == list(DEFAULT_WINDOW) or (n in SMALL_SCREENS and fw[n] == [OLD_SMALL_SCREEN_SCALE, 0.0, 0.0]): fw[n] = list(nv)
                     self.v['interface_windows'] = fw
+                    self.v['dpad'] = self.v['rotation_bar'] = False          # (v5: the D-pad and the rotation bar hidden, once; shown again from the Esc menu)
                 if saved_v == 3:                                      # v3 -> v4: new default values, without touching what the player set themselves
                     ts = self.v['keys']
                     if ts['chat'] == [None, None] and not any(n in (a for l in ts.values() for a in l) for n in ('LALT', 'RALT')): ts['chat'] = list(DEFAULT_KEYS['chat'])

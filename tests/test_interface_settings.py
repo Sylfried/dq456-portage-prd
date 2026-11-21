@@ -22,7 +22,7 @@ OUTSIDE_INTERFACE |= {'camera_invert_lr', 'interface_version', 'gamepads'}      
 OUTSIDE_INTERFACE |= {'history_favorites_only', 'language'}                                          # history's "Favorites only" checkbox: a window state, not an editor interface
 
 # values different from DEFAULT for each interface setting
-OTHER = {'buttons': False, 'dpad': False, 'dpad_size': 1.7, 'rotation_bar': False, 'buttons_size': 1.4, 'buttons_pos': {'map': [10, 5], 'menu': [3, 2.5], 'chat': [0, 9], 'dpad': [20, 9]},
+OTHER = {'buttons': False, 'dpad': True, 'dpad_size': 1.7, 'rotation_bar': True, 'buttons_size': 1.4, 'buttons_pos': {'map': [10, 5], 'menu': [3, 2.5], 'chat': [0, 9], 'dpad': [20, 9]},
           'speed_button': False, 'speed_button_size': 1.3, 'speed_button_pos': [4.0, 6.0],
           'vehicle_button': False, 'vehicle_button_size': 1.6, 'vehicle_button_pos': [2.0, 7.0],
           'editor_grid': False, 'buttons_snap': False,
@@ -36,6 +36,10 @@ def modified_settings():
     for k, x in OTHER.items(): r[k] = copy.deepcopy(x)
     r['vignette'] = 0.8; r['msaa'] = 8; r['music_volume'] = 0.2; r['keys']['map'] = ['K', None]
     return r
+
+
+DEFAULT_WINDOWS = dict({n: [RG.COMMANDS_WIDTH, 0.0, 0.0] for n in RG.BATTLE_COMMAND_WINDOWS}, **{n: [RG.SMALL_SCREEN_SCALE, 0.0, 0.0] for n in RG.SMALL_SCREENS},
+                       MonsterEncyclopedia=[RG.BOOK_SCALE, 0.0, 0.0])
 
 
 def interface(r):
@@ -55,9 +59,15 @@ class Reset(unittest.TestCase):
         self.assertEqual(len(RG.INTERFACE_KEYS), len(set(RG.INTERFACE_KEYS)))
         self.assertEqual(set(RG.SCREEN_KEYS + RG.SPEED_KEYS + RG.VEHICLE_KEYS + RG.WINDOW_KEYS + RG.EDITOR_KEYS), set(RG.INTERFACE_KEYS))
 
-    def test_old_file_gets_the_rotation_bar(self):
-        path = os.path.join(tempfile.mkdtemp(), 'reglages.json'); json.dump({'dpad': False}, open(path, 'w'))
-        r = RG.Settings(path); self.assertTrue(r['rotation_bar']); self.assertFalse(r['dpad'])          # a file from before the bar shows it, without touching the rest
+    def test_old_file_hides_the_dpad_and_the_bar(self):
+        """interface v5: a file from before has the D-pad and the rotation bar hidden once (and its small screens still at the old default a quarter larger), the rest
+        untouched; a file of v5 keeps them as the player set them"""
+        path = os.path.join(tempfile.mkdtemp(), 'reglages.json')
+        json.dump({'dpad': True, 'rotation_bar': True, 'buttons': False, 'interface_version': 4, 'interface_windows': {'CityMap': [1.5, 0.0, 0.0], 'ShopMap': [1.2, 0.0, 0.0]}}, open(path, 'w'))
+        r = RG.Settings(path); self.assertEqual((r['dpad'], r['rotation_bar'], r['buttons']), (False, False, False))
+        w = r['interface_windows']; self.assertEqual((w['CityMap'], w['ShopMap'], w['MonsterEncyclopedia']), ([RG.SMALL_SCREEN_SCALE, 0.0, 0.0], [1.2, 0.0, 0.0], [RG.BOOK_SCALE, 0.0, 0.0]))
+        json.dump({'dpad': True, 'rotation_bar': True, 'interface_version': 5}, open(path, 'w'))
+        r = RG.Settings(path); self.assertEqual((r['dpad'], r['rotation_bar']), (True, True))
 
     def test_non_default_test_values(self):
         self.assertEqual(set(OTHER), set(RG.INTERFACE_KEYS))
@@ -119,9 +129,9 @@ class Reset(unittest.TestCase):
     def test_no_sharing_with_default(self):
         r = RG.Settings(None); r.reset_interfaces()
         r['interface_windows']['X'] = [2.0, 0.0, 0.0]; r['interface_hidden'].append('X'); r['buttons_pos']['map'] = [1, 1]
-        self.assertEqual((RG.DEFAULT['interface_windows'], RG.DEFAULT['interface_hidden'], RG.DEFAULT['buttons_pos']), (dict({n: [RG.COMMANDS_WIDTH, 0.0, 0.0] for n in RG.BATTLE_COMMAND_WINDOWS}, **{n: [RG.SMALL_SCREEN_SCALE, 0.0, 0.0] for n in RG.SMALL_SCREENS}), [], {}))       # DEFAULT is never modified by a reset (only the battle command windows and the small screens have a default size)
+        self.assertEqual((RG.DEFAULT['interface_windows'], RG.DEFAULT['interface_hidden'], RG.DEFAULT['buttons_pos']), (DEFAULT_WINDOWS, [], {}))       # DEFAULT is never modified by a reset (only the battle command windows, the small screens and the book have a default size)
         r2 = RG.Settings(None); r2.reset_interface('X'); r2.reset_interface(RG.SCREEN_TARGET)
-        self.assertEqual((RG.DEFAULT['interface_windows'], RG.DEFAULT['interface_hidden'], RG.DEFAULT['buttons_pos']), (dict({n: [RG.COMMANDS_WIDTH, 0.0, 0.0] for n in RG.BATTLE_COMMAND_WINDOWS}, **{n: [RG.SMALL_SCREEN_SCALE, 0.0, 0.0] for n in RG.SMALL_SCREENS}), [], {}))
+        self.assertEqual((RG.DEFAULT['interface_windows'], RG.DEFAULT['interface_hidden'], RG.DEFAULT['buttons_pos']), (DEFAULT_WINDOWS, [], {}))
 
     def test_storage(self):
         f = os.path.join(tempfile.mkdtemp(prefix='rg_test_'), 'settings.json')
@@ -140,7 +150,7 @@ class Reset(unittest.TestCase):
             from dq456_pc.menus import hud_mobile as HM
         except Exception as ex:
             self.skipTest('pause.py non importable ici (%r)' % (ex,))
-        r = RG.Settings(None)
+        r = RG.Settings(None); r['dpad'] = r['rotation_bar'] = True
         hud = types.SimpleNamespace(rect=lambda n: (10.0 * len(n), 20.0, 60.0, 50.0))
         P = PA.Pause(types.SimpleNamespace(reg=r, hud=hud)); P.target = RG.SCREEN_TARGET
         mask = lambda: {n: (e[4], e[5]) for n, e in zip(HM.editor_names(P.target), P._preview_elements())}

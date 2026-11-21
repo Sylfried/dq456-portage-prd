@@ -161,7 +161,7 @@ class BackdropMixin:
 
     def parchment_quad(self):
         """The parchment's corners in clip space: (x0, y0, x1, y1), over the interface column (450 units wide: the phone's width), 0.89 of its width in height, centered on it."""
-        cx, cy, s = self._ui_reference(); W, H = max(1.0, float(self.width)), max(1.0, float(self.height))
+        cx, cy, s = self.book_frame(); W, H = max(1.0, float(self.width)), max(1.0, float(self.height))          # (the book's window frame: enlarged with it, menu_display.book_frame)
         hw = 225.0 * s; hh = PARCHMENT_HEIGHT * hw
         return (cx - hw) / W * 2 - 1, (cy - hh) / H * 2 - 1, (cx + hw) / W * 2 - 1, (cy + hh) / H * 2 - 1
 

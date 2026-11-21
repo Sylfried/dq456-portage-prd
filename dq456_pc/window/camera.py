@@ -185,11 +185,11 @@ class CameraMixin:
         yoff = e.cam_yoff or 0.0
         if yoff:
             Ty = np.eye(4); Ty[1, 3] = yoff; M = Ty @ M              # SceneCamera.s_yOffset
-        ref = getattr(self, '_ui_reference', None) if e.part == ENGINE.PART_BESTIARY else None
-        if ref is not None:                                          # the bestiary: its picture follows the interface column (its size and its place: centered, on the left or on the right)
-            k = float(getattr(self, 'ui_k', 1.0) or 1.0); dx = ref()[0] / max(1.0, float(self.width)) * 2.0 - 1.0
-            if k != 1.0 or dx:
-                T = np.eye(4); T[0, 0] = T[1, 1] = k; T[0, 3] = dx; M = T @ M
+        ref = getattr(self, 'book_frame', None) if e.part == ENGINE.PART_BESTIARY else None
+        if ref is not None:                                          # the bestiary: its picture follows the book's window (its size and its place: menu_display.book_frame)
+            cx, cy, s = ref(); H = max(1.0, float(self.height)); k = s / (H / 800.0); dx = cx / max(1.0, float(self.width)) * 2.0 - 1.0; dy = cy / H * 2.0 - 1.0
+            if k != 1.0 or dx or dy:
+                T = np.eye(4); T[0, 0] = T[1, 1] = k; T[0, 3] = dx; T[1, 3] = dy; M = T @ M
         self._view_border = (np.array(pos, float), right, np.cross(fw, right), fw)
         # Sprite reference frame: a character's panel takes the rotation of the GAME's camera (Chara.normalBillboard): that of the view
         return M, (right, np.cross(fw, right), fw)

@@ -96,13 +96,16 @@ class When(unittest.TestCase):
             w = FakeWindow(); w._draw_backdrop(self.e(ENGINE.PART_BESTIARY), background, gradient); self.assertEqual(w.calls, ['tex', 'parchment'], (background, gradient))
 
     def test_parchment_quad(self):
-        """Over the interface column (450 units: the phone's width), 0.89 of its width in height, centered (window 1920 x 1080: column 607.5 px wide, parchment 540.7 px high)."""
-        w = FakeWindow(); w.width, w.height = 1920, 1080; w._ui_reference = lambda: (960.0, 540.0, 1080 / 800.0)
+        """Over the book's window frame (450 units: the phone's width), 0.89 of its width in height, centered on it (window 1920 x 1080, frame of the interface column:
+        607.5 px wide, parchment 540.7 px high); an enlarged frame, higher up, takes it along."""
+        w = FakeWindow(); w.width, w.height = 1920, 1080; w.book_frame = lambda: (960.0, 540.0, 1080 / 800.0)
         x0, y0, x1, y1 = w.parchment_quad()
         self.assertAlmostEqual((x1 - x0) / 2 * 1920, 450 * 1080 / 800.0, places=3); self.assertAlmostEqual((y1 - y0) / 2 * 1080, 0.89 * 450 * 1080 / 800.0, places=3)
         self.assertAlmostEqual(x0 + x1, 0.0, places=6); self.assertAlmostEqual(y0 + y1, 0.0, places=6)
-        w._ui_reference = lambda: (225 * 1080 / 800.0, 540.0, 1080 / 800.0)                  # (interface on the left)
+        w.book_frame = lambda: (225 * 1080 / 800.0, 540.0, 1080 / 800.0)                  # (interface on the left)
         x0, _y0, x1, _y1 = w.parchment_quad(); self.assertAlmostEqual(x0, -1.0, places=6)
+        w.book_frame = lambda: (960.0, 600.0, 1.25 * 1080 / 800.0)                         # (the book a quarter larger, higher up)
+        x0, y0, x1, y1 = w.parchment_quad(); self.assertAlmostEqual((x1 - x0) / 2 * 1920, 1.25 * 450 * 1080 / 800.0, places=3); self.assertAlmostEqual((y0 + y1) / 2, 600.0 / 540.0 - 1.0, places=6)
 
     def test_parchment_resource(self):
         from dq456_pc.menus import pre_game as AP
