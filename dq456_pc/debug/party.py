@@ -42,6 +42,9 @@ SACK_ADD = '_ZN6status12HaveItemSack3addEii'
 SACK_VTABLE = '_ZTVN6status12HaveItemSackE'
 ITEM_FULL = 99
 LEVEL_MAX, EXP_MAX = 99, 9999999
+VALUE_MAX = {'gold': 999999, 'bank': 99999000, 'play_time': 216000000 - 1}          # the games' own caps (their setters: BasePartyStatus::setGold..., GameStatus::setPlayTime, in 1/60 s)
+COINS_MAX = {'dq4': 999999, 'dq5': 9999999, 'dq6': 9999999}; MEDALS_MAX = {'dq4': 99, 'dq5': 999, 'dq6': 999}
+STAT_MAX = {'HeroLevel': LEVEL_MAX}                     # (DQ IV's record: otherwise its field's size, MASKS)
 
 
 def history_fn(kind, field, arg):
@@ -113,8 +116,15 @@ class Party:
             if f: out['stat:' + field] = c.call(f, h, label='BattleHistory::get' + field) & MASKS[t]
         return out
 
+    def limits(self):
+        """{value key: [least, most]} that the panel's fields take (the game's own caps), and the members' level and experience."""
+        out = {'level': [1, LEVEL_MAX], 'exp': [0, EXP_MAX], 'gold': [0, VALUE_MAX['gold']], 'bank': [0, VALUE_MAX['bank']], 'coins': [0, COINS_MAX[self.key]],
+               'medals': [0, MEDALS_MAX[self.key]], 'play_time': [0, VALUE_MAX['play_time']]}
+        for field, t in HISTORY[1]: out['stat:' + field] = [0, STAT_MAX.get(field, MASKS[t])]
+        return out
+
     def info(self, q=None):
-        return {'game': self.key, 'members': self.members(), 'characters': self.characters(), 'values': self.values()}
+        return {'game': self.key, 'members': self.members(), 'characters': self.characters(), 'values': self.values(), 'limits': self.limits()}
 
     # --- commands ------------------------------------------------------------------------------------------------------------------------------------------------
     def _member(self, c):
@@ -169,7 +179,8 @@ class Party:
         k = c.get('key')
         try: v = int(c.get('value'))
         except (TypeError, ValueError): return {'error': tr(N_('debug.party_value_bad')) % c.get('value')}
-        if v < 0: return {'error': tr(N_('debug.party_value_bad')) % v}
+        least, most = self.limits().get(k, (0, 0xffffffff))
+        if not least <= v <= most: return {'error': tr(N_('debug.party_value_range')) % (least, most)}
         core = self._core()
         if k == 'play_time': fn, obj = PLAY_TIME[0], core.export(GAME)
         elif k in SETTERS: fn, obj = SETTERS[k], core.export(PARTY)

@@ -415,6 +415,7 @@ class Catalog:
         return {'game': self.key, 'map': self.g.engine.state.game_map, 'maps': self.maps(), 'worlds': self.worlds(), 'steps': self.steps(), 'flags': self.flags(),
                 'bosses': self.bosses(), 'items': self.items(), 'encounters': self.encounters(), 'minigames': [m[0] for m in MINIGAMES.get(self.key, ())],
                 'backdrops': self.backdrop_list(), 'backdrop': getattr(self.g, 'battle_scenery', None), 'sea_rows': sorted(self.sea_rows()), 'places': self.map_places(),
+                'no_entrance': sorted(set(self.maps()) - set(self.entrances())), 'limits': {'item_count': [1, ITEM_COUNT_MAX], 'switch': [0, FLAG_BYTES * 8 - 1]},
                 'in_battle': self.g.engine.state.part == ENGINE.PART_BATTLE}
 
     # --- commands ---------------------------------------------------------------------------------------------------------------------------------------------

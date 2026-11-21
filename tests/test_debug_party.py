@@ -95,6 +95,14 @@ class PartyTab(unittest.TestCase):
         self.assertIn((PY.PLAY_TIME[0], (GAME_AT, 216000)), self.core.calls)
         for bad in ({'key': 'bank', 'value': -1}, {'key': 'nothing', 'value': 1}, {'key': 'gold', 'value': 'x'}): self.assertIn('error', self.p.set_value(bad))
 
+    def test_limits_are_the_games_caps(self):
+        """each value's field takes what the game's setter keeps (gold 999,999, DQ IV's medals 99...), the panel is told them; more is refused"""
+        lim = self.p.info()['limits']
+        self.assertEqual((lim['gold'], lim['bank'], lim['coins'], lim['medals'], lim['level'], lim['exp']), ([0, 999999], [0, 99999000], [0, 999999], [0, 99], [1, 99], [0, 9999999]))
+        self.assertEqual((lim['play_time'], lim['stat:MaxDamage'], lim['stat:HeroLevel']), ([0, 215999999], [0, 0xffff], [0, 99]))
+        self.assertEqual(self.p.set_value({'key': 'gold', 'value': 999999}), {'ok': True})
+        for bad in ({'key': 'gold', 'value': 1000000}, {'key': 'medals', 'value': 100}, {'key': 'play_time', 'value': 216000000}): self.assertIn('error', self.p.set_value(bad))
+
     def test_dq4_adventure_record(self):
         """DQ IV's record (battles, escapes, highest damage...): read through its getters, written through its setters, within their type"""
         self.assertEqual(self.p.values()['stat:BattleCount'], 51)

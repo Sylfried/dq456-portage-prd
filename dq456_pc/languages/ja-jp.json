@@ -617,6 +617,7 @@
   {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "メッセージ表示中です。先に閉じてください"},
   {"key": "debug.texts_shown", "en": "message %d shown", "text": "メッセージ%dを表示"},
   {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "キャラクター%dはゲストで、レベルがありません"},
-  {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "テキストを入力してください（最大 %d 文字）"}
+  {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "テキストを入力してください（最大 %d 文字）"},
+  {"key": "debug.party_value_range", "en": "from %d to %d", "text": "%d～%d"}
  ]
 }

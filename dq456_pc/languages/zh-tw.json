@@ -617,6 +617,7 @@
   {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "已有訊息顯示：請先關閉"},
   {"key": "debug.texts_shown", "en": "message %d shown", "text": "已顯示訊息%d"},
   {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "角色%d是客人：遊戲不給其等級"},
-  {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "請輸入文字（最多 %d 個字元）"}
+  {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "請輸入文字（最多 %d 個字元）"},
+  {"key": "debug.party_value_range", "en": "from %d to %d", "text": "%d 至 %d"}
  ]
 }

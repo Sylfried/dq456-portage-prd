@@ -23,6 +23,7 @@ pre { background: #101216; padding: 8px; overflow: auto; max-height: 60vh; }
 .grid { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; }
 .row { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
 .active { background: #26402b; }
+.num { display: inline-flex; gap: 2px; align-items: center; } .num .mm { padding: 3px 5px; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -38,24 +39,32 @@ pre { background: #101216; padding: 8px; overflow: auto; max-height: 60vh; }
 <nav id="tabs"></nav>
 <main>
   <section id="t_state"><div class="grid" id="state"></div><h4 id="h_log"></h4><pre id="log"></pre></section>
-  <section id="t_scenes">
-    <h4 id="h_map"></h4><div class="row"><select id="sc_map"></select><button id="sc_go"></button><span class="dim" id="sc_cur"></span></div>
-    <div class="row"><select id="sc_world_at"></select><button id="sc_world"></button></div>
+  <section id="t_places">
+    <h4 id="h_map"></h4><div class="row"><select id="sc_map"></select><button id="sc_go"></button><span class="dim" id="sc_cur"></span></div><p class="dim" id="sc_map_note"></p>
+    <h4 id="h_world"></h4><div class="row"><select id="sc_world_at"></select><button id="sc_world"></button></div>
+  </section>
+  <section id="t_story">
     <h4 id="h_step"></h4><div class="row"><select id="sc_step"></select><label><input type="checkbox" id="sc_step_go" checked> <span id="l_step_go"></span></label><button id="sc_apply"></button></div><p class="dim" id="sc_step_note"></p>
-    <h4 id="h_fight"></h4><div class="row"><select id="sc_group"></select><select id="sc_backdrop"></select><button id="sc_fight"></button></div>
+    <h4 id="h_sw"></h4><p class="dim" id="sc_sw_note"></p><div class="row"><select id="sc_set"></select><span id="sc_n_box"></span><button id="sc_on"></button><button id="sc_off"></button></div><div id="sc_flags" class="mono"></div>
+  </section>
+  <section id="t_fights">
+    <div class="row"><select id="sc_group"></select><select id="sc_backdrop"></select><button id="sc_fight"></button></div>
     <p class="dim" id="sc_fight_note"></p><div class="row"><button id="sc_backdrop_go"></button><span class="dim" id="sc_backdrop_cur"></span></div>
-    <h4 id="h_mini"></h4><div class="row" id="sc_minigames"></div>
-    <h4 id="h_items"></h4><div class="row"><input id="sc_item_find" size="16"><select id="sc_item"></select><input id="sc_count" value="1" size="3"><button id="sc_give"></button></div>
-    <div class="row"><input id="sc_gold" value="1000" size="9"><button id="sc_gold_go"></button><span class="dim" id="sc_items_note"></span></div>
-    <h4 id="h_sw"></h4><p class="dim" id="sc_sw_note"></p><div class="row"><select id="sc_set"></select><input id="sc_n" size="6"><button id="sc_on"></button><button id="sc_off"></button></div><div id="sc_flags" class="mono"></div>
   </section>
   <section id="t_party">
     <h4 id="h_members"></h4><div id="pa_members"></div>
     <div class="row"><select id="pa_char"></select><button id="pa_join"></button></div>
-    <h4 id="h_values"></h4><div id="pa_values" class="grid"></div>
-    <h4 id="h_allitems"></h4><div class="row"><button id="pa_items"></button><span class="dim" id="pa_items_note"></span></div>
-    <h4 id="h_extras"></h4><div id="pa_extras"></div>
     <h4 id="h_jobs"></h4><div id="pa_jobs"></div>
+    <h4 id="h_values"></h4><div id="pa_values" class="grid"></div>
+  </section>
+  <section id="t_items">
+    <h4 id="h_give"></h4><div class="row"><input id="sc_item_find" size="16"><select id="sc_item"></select><span id="sc_count_box"></span><button id="sc_give"></button></div><p class="dim" id="sc_items_note"></p>
+    <div class="row"><button id="pa_items"></button><span class="dim" id="pa_items_note"></span></div>
+    <h4 id="h_money"></h4><div id="it_money" class="grid"></div>
+  </section>
+  <section id="t_activities">
+    <h4 id="h_mini"></h4><div class="row" id="sc_minigames"></div>
+    <h4 id="h_extras"></h4><div id="pa_extras"></div>
   </section>
   <section id="t_book">
     <div class="row"><button id="bk_all"></button><button id="bk_none"></button><input id="bk_find" size="18"><span class="dim" id="bk_count"></span></div>
@@ -64,7 +73,7 @@ pre { background: #101216; padding: 8px; overflow: auto; max-height: 60vh; }
   <section id="t_texts">
     <div class="row"><select id="tx_file"></select><input id="tx_find" size="18"><span class="dim" id="tx_count"></span></div>
     <select id="tx_list" size="16" style="width:100%"></select>
-    <div class="row"><input id="tx_num" size="22"><label><span id="l_tx_n"></span> <input id="tx_n" value="1" size="3"></label>
+    <div class="row"><input id="tx_num" size="22"><label><span id="l_tx_n"></span> <span id="tx_n_box"></span></label>
       <button id="tx_prev">◀</button><button id="tx_show"></button><button id="tx_next">▶</button></div>
     <p class="dim" id="tx_note"></p>
     <h4 id="h_tx_custom"></h4><textarea id="tx_custom" rows="3" cols="64" maxlength="400"></textarea>
@@ -74,22 +83,24 @@ pre { background: #101216; padding: 8px; overflow: auto; max-height: 60vh; }
     <input id="pk_filter" placeholder="types: 22 28 / !22 !28 !29" size="28"><span class="dim" id="pk_count"></span></div><pre id="packets"></pre></section>
   <section id="t_menus"><div id="menus"></div></section>
   <section id="t_objects"><div id="objects"></div></section>
-  <section id="t_memory"><div class="row"><input id="mem_where" placeholder="symbol, 0x... or +0x..." size="48"> <input id="mem_len" value="256" size="5">
+  <section id="t_memory"><div class="row"><input id="mem_where" placeholder="symbol, 0x... or +0x..." size="48"> <span id="mem_len_box"></span>
     <button id="mem_read"></button><span class="dim" id="mem_info"></span></div>
     <div class="row"><input id="mem_bytes" placeholder="00 01 02 ..." size="48"><button id="mem_write"></button></div><pre id="memory"></pre></section>
   <section id="t_states"><div id="states"></div></section>
 </main>
 <script>
 const T = {
-  fr: {state: 'État', packets: 'Paquets', menus: 'Menus', objects: 'Objets', memory: 'Mémoire', states: 'Sauvegardes d\'état',
+  fr: {state: 'État', packets: 'Paquets', menus: 'Menus', objects: 'Personnages 3D', memory: 'Mémoire', states: 'Sauvegardes d\'état',
        pause: 'Pause (F3)', resume: 'Reprendre (F3)', report: 'Rapport de bug (F8)', follow: 'suivre', read: 'Lire', write: 'Écrire', log: 'Journal du moteur',
        save: 'Sauver', load: 'Charger', empty: 'vide', paused: 'EN PAUSE', replay: 'REJEU', frame: 'image', part: 'partie', map: 'carte', flags: 'drapeaux',
        fade: 'fondu avant', bfade: 'fondu arrière', menu: 'menu actif', message: 'message', pace: 'rythme', sprites: 'Personnages', meshes: 'Maillages', camera: 'caméra',
        port: 'port', type: 'type', cursor: 'curseur', buttons: 'boutons', lines: 'lignes', yes: 'oui', no: 'non', confirm_write: 'Écrire dans la mémoire du moteur ?', loadq: 'Charger cette sauvegarde d\'état ?',
-       scenes: 'Scènes', maph: 'Carte', go: 'Y aller', world: 'Carte du monde', world_here: 'devant le lieu actuel', world_n: 'Monde', current: 'carte actuelle', step: 'Étape de l\'histoire', apply: 'Appliquer', step_go: 'aller sur sa carte',
+       places: 'Lieux', story: 'Histoire', fights: 'Combats', activities: 'Activités', min: 'Min', max: 'Max', money: 'Argent', give_h: 'Donner un objet', playstats: 'Temps de jeu et statistiques',
+       scene_maps: 'Cartes de scène (sans entrée : le héros arrive à l\'origine de la carte)', map_note: 'Le héros arrive par l\'entrée principale de la carte (celle qui vient du monde, sinon de la carte la plus proche), comme par une porte : la carte charge ses personnages, sa musique et ses effets.',
+       world_h: 'Carte du monde', maph: 'Carte', go: 'Y aller', world: 'Y aller', world_here: 'devant le lieu actuel', world_n: 'Monde', current: 'carte actuelle', step: 'Étape de l\'histoire', apply: 'Appliquer', step_go: 'aller sur sa carte',
        step_note: 'Remet les interrupteurs globaux et l\'équipe de cette étape ; objets, niveaux et or ne changent pas. Le héros arrive par l\'entrée principale de la carte.',
        fight: 'Combat', start_fight: 'Lancer le combat ici', bosses: 'Boss', switches: 'Interrupteurs', on: 'Allumer', off: 'Éteindre',
-       items: 'Objets et or', give: 'Donner', find: 'chercher…', gold_add: 'Or (négatif : retirer)', items_note: 'Donnés comme un objet trouvé : au premier membre qui a de la place, sinon au sac.',
+       items: 'Objets', give: 'Donner', find: 'chercher…', gold_add: 'Or (négatif : retirer)', items_note: 'Donnés comme un objet trouvé : au premier membre qui a de la place, sinon au sac.',
        groups: 'Groupes', sea: 'mer', backdrop_own: 'décor du lieu', backdrop_go: 'Ce décor pour tous les combats', backdrop_all: 'tous les combats : %s', backdrop_terrains: 'Terrains', backdrop_places: 'Lieux',
        tr_pl: 'Plaine', tr_mt: 'Montagne', tr_wd: 'Forêt', tr_sd: 'Désert', tr_se: 'Mer', tr_po: 'Marais', tr_sn: 'Neige', tr_is: 'Plage', tr_dk: 'Monde des ténèbres', tr_ds: 'Fond marin',
        time_d: 'jour', time_e: 'soir', time_n: 'nuit', time_dk: 'monde des ténèbres', unknown_place: 'lieu inconnu', mini: 'Mini-jeux et livre',
@@ -106,15 +117,17 @@ const T = {
        v_gold: 'Or', v_bank: 'Banque', v_coins: 'Jetons de casino', v_medals: 'Mini-médailles', v_play_time: 'Temps de jeu (h:mm:ss)', allitems: 'Objets', items_btn: 'Tous les objets × 99 dans le sac',
        items_note: 'Tous les objets du jeu, y compris ceux que le jeu réserve au débogage.',
        sw_global: 'globaux', sw_area: 'de la zone', sw_local: 'de la carte', sw_note: 'Cliquer un numéro l\'éteint.', fight_note: 'Tout combat se lance d\'ici, sans voyager (ville, donjon ou carte du monde). Un boss garde le décor de son lieu, sauf si un autre est choisi ; un groupe qu\'on ne rencontre qu\'en mer se bat devant la mer ; les autres devant le décor choisi, ou celui du lieu. L\'heure du lieu donne la variante (jour, soir, nuit).'},
-  en: {state: 'State', packets: 'Packets', menus: 'Menus', objects: 'Objects', memory: 'Memory', states: 'Savestates',
+  en: {state: 'State', packets: 'Packets', menus: 'Menus', objects: 'Sprites', memory: 'Memory', states: 'Savestates',
        pause: 'Pause (F3)', resume: 'Resume (F3)', report: 'Bug report (F8)', follow: 'follow', read: 'Read', write: 'Write', log: 'Engine log',
        save: 'Save', load: 'Load', empty: 'empty', paused: 'PAUSED', replay: 'REPLAY', frame: 'frame', part: 'part', map: 'map', flags: 'flags',
        fade: 'front fade', bfade: 'back fade', menu: 'active menu', message: 'message', pace: 'pace', sprites: 'Characters', meshes: 'Meshes', camera: 'camera',
        port: 'port', type: 'type', cursor: 'cursor', buttons: 'buttons', lines: 'lines', yes: 'yes', no: 'no', confirm_write: 'Write into the engine\'s memory?', loadq: 'Load this savestate?',
-       scenes: 'Scenes', maph: 'Map', go: 'Go', world: 'World map', world_here: 'in front of the current place', world_n: 'World', current: 'current map', step: 'Story step', apply: 'Apply', step_go: 'go to its map',
+       places: 'Places', story: 'Story', fights: 'Fights', activities: 'Activities', min: 'Min', max: 'Max', money: 'Money', give_h: 'Give an item', playstats: 'Play time and statistics',
+       scene_maps: 'Scene maps (no entrance: the hero arrives at the map\'s origin)', map_note: 'The hero arrives through the map\'s main entrance (the one from the world map, otherwise from the nearest map), as through a door: the map loads its characters, its music and its effects.',
+       world_h: 'World map', maph: 'Map', go: 'Go', world: 'Go', world_here: 'in front of the current place', world_n: 'World', current: 'current map', step: 'Story step', apply: 'Apply', step_go: 'go to its map',
        step_note: 'Puts back the global switches and the party of that step; items, levels and gold do not change. The hero arrives through the map\'s main entrance.',
        fight: 'Fight', start_fight: 'Start the fight here', bosses: 'Bosses', switches: 'Switches', on: 'On', off: 'Off',
-       items: 'Items and gold', give: 'Give', find: 'search…', gold_add: 'Gold (negative: take)', items_note: 'Given as a found item: to the first member with room, otherwise the bag.',
+       items: 'Items', give: 'Give', find: 'search…', gold_add: 'Gold (negative: take)', items_note: 'Given as a found item: to the first member with room, otherwise the bag.',
        groups: 'Groups', sea: 'sea', backdrop_own: 'the place\'s backdrop', backdrop_go: 'This backdrop for every fight', backdrop_all: 'every fight: %s', backdrop_terrains: 'Terrains', backdrop_places: 'Places',
        tr_pl: 'Plains', tr_mt: 'Mountains', tr_wd: 'Forest', tr_sd: 'Desert', tr_se: 'Sea', tr_po: 'Swamp', tr_sn: 'Snow', tr_is: 'Beach', tr_dk: 'Dark world', tr_ds: 'Sea floor',
        time_d: 'day', time_e: 'evening', time_n: 'night', time_dk: 'dark world', unknown_place: 'unknown place', mini: 'Mini-games and book',
@@ -133,8 +146,32 @@ const T = {
        sw_global: 'global', sw_area: 'area', sw_local: 'map', sw_note: 'Click a number to turn it off.', fight_note: 'Any fight starts from here, without travelling (town, dungeon or world map). A boss keeps its own place\'s backdrop unless another is chosen; a group only met at sea fights before the sea; the others before the chosen backdrop, or the place\'s. The place\'s time of day gives the variant (day, evening, night).'}};
 let L = T.en, lang = null, tab = 't_state', last = null, pkSince = -1, pkRows = [];
 const $ = id => document.getElementById(id);
-const TABS = ['state', 'scenes', 'party', 'book', 'texts', 'packets', 'menus', 'objects', 'memory', 'states'];
+const TABS = ['state', 'places', 'story', 'fights', 'party', 'items', 'activities', 'book', 'texts', 'states', 'packets', 'menus', 'objects', 'memory'];
 const esc = s => String(s).replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
+const LIMITS = {item_count: [1, 99], switch: [0, 1023]};          // (the catalog's, once read)
+const width = n => String(Math.abs(n)).length + (n < 0 ? 1 : 0);
+function mm(id, v, apply, label) { return `<button class="mm" data-for="${id}" data-v="${v}"${apply ? ` data-apply="${apply}"` : ''}>${label}</button>`; }
+function num(id, v, lim, apply) {          // a number field kept within [least, most] (and their length), with Min and Max (that apply at once where the field has its own button)
+  const [lo, hi] = lim || [0, 999999999], w = Math.max(width(lo), width(hi));
+  return `<span class="num"><input id="${id}" class="nf" data-lo="${lo}" data-hi="${hi}" maxlength="${w}" size="${Math.max(2, w)}" value="${v ?? ''}">${mm(id, lo, apply, L.min)}${mm(id, hi, apply, L.max)}</span>`;
+}
+function timeField(id, v, lim, apply) {          // play time h:mm:ss (1/60 s in the game), within [least, most]
+  const [lo, hi] = lim || [0, 215999999];
+  return `<span class="num"><input id="${id}" class="tf" maxlength="${hms(hi).length}" size="${hms(hi).length}" value="${hms(v)}">${mm(id, hms(lo), apply, L.min)}${mm(id, hms(hi), apply, L.max)}</span>`;
+}
+document.addEventListener('input', e => {
+  const t = e.target; if (!t.classList) return;
+  if (t.classList.contains('tf')) { t.value = t.value.replace(/[^0-9:]/g, ''); return; }
+  if (!t.classList.contains('nf')) return;
+  const lo = +t.dataset.lo, hi = +t.dataset.hi; let s = t.value.replace(lo < 0 ? /[^0-9-]/g : /[^0-9]/g, '').replace(/(?!^)-/g, '');
+  if (s !== '' && s !== '-') { if (+s > hi) s = String(hi); if (lo < 0 && +s < lo) s = String(lo); }
+  t.value = s;
+});
+document.addEventListener('change', e => { const t = e.target; if (t.classList && t.classList.contains('nf') && t.value !== '' && +t.value < +t.dataset.lo) t.value = t.dataset.lo; });
+document.addEventListener('click', e => {
+  const b = e.target; if (!b.classList || !b.classList.contains('mm')) return;
+  const f = $(b.dataset.for); if (f) f.value = b.dataset.v; const a = b.dataset.apply && document.querySelector(b.dataset.apply); if (a) a.click();
+});
 async function get(path) { const r = await fetch(path); return r.json(); }
 async function cmd(c) { const r = await fetch('/api/cmd', {method: 'POST', body: JSON.stringify(c)}); const j = await r.json(); if (j.error) $('msg').textContent = j.error; return j; }
 function texts() {
@@ -145,10 +182,12 @@ function texts() {
     ['tx_show', 'tx_show'], ['l_tx_n', 'tx_n'], ['tx_note', 'tx_note'], ['h_tx_custom', 'tx_custom'], ['tx_custom_show', 'tx_custom_show'],
     ['bk_all', 'bk_all'], ['bk_none', 'bk_none'], ['bk_note', 'bk_note'],
     ['h_extras', 'extras'], ['h_jobs', 'jobs'],
-    ['h_members', 'members'], ['pa_join', 'join'], ['h_values', 'values'], ['h_allitems', 'allitems'], ['pa_items', 'items_btn'], ['pa_items_note', 'items_note'],
-    ['h_items', 'items'], ['sc_give', 'give'], ['sc_gold_go', 'gold_add'], ['sc_items_note', 'items_note'],
-    ['h_fight', 'fight'], ['sc_fight', 'start_fight'], ['sc_fight_note', 'fight_note'], ['h_sw', 'switches'], ['sc_sw_note', 'sw_note'], ['sc_on', 'on'], ['sc_off', 'off']]) $(id).textContent = L[k];
+    ['h_members', 'members'], ['pa_join', 'join'], ['h_values', 'playstats'], ['pa_items', 'items_btn'], ['pa_items_note', 'items_note'], ['h_money', 'money'],
+    ['h_give', 'give_h'], ['sc_give', 'give'], ['sc_items_note', 'items_note'], ['h_world', 'world_h'], ['sc_map_note', 'map_note'],
+    ['sc_fight', 'start_fight'], ['sc_fight_note', 'fight_note'], ['h_sw', 'switches'], ['sc_sw_note', 'sw_note'], ['sc_on', 'on'], ['sc_off', 'off']]) $(id).textContent = L[k];
   $('sc_set').innerHTML = ['global', 'area', 'local'].map(k => `<option value="${k}">${L['sw_' + k]}</option>`).join(''); $('sc_item_find').placeholder = L.find; $('bk_find').placeholder = L.find; $('tx_find').placeholder = L.find;
+  $('sc_count_box').innerHTML = num('sc_count', $('sc_count') ? $('sc_count').value : 1, LIMITS.item_count); $('sc_n_box').innerHTML = num('sc_n', $('sc_n') ? $('sc_n').value : '', LIMITS.switch);
+  $('tx_n_box').innerHTML = num('tx_n', $('tx_n') ? $('tx_n').value : 1, [1, 50]); $('mem_len_box').innerHTML = num('mem_len', $('mem_len') ? $('mem_len').value : 256, [1, 4096]);
   $('b_report').textContent = L.report; $('l_follow').textContent = L.follow; $('mem_read').textContent = L.read; $('mem_write').textContent = L.write; $('h_log').textContent = L.log;
 }
 function show() { for (const s of document.querySelectorAll('section')) s.classList.toggle('sel', s.id === tab); }
@@ -203,9 +242,10 @@ async function refreshStates() {
 }
 let catalog = null;
 async function loadCatalog() {
-  catalog = await get('/api/catalog');
+  catalog = await get('/api/catalog'); Object.assign(LIMITS, catalog.limits || {}); texts();
   const placeName = Object.assign({}, catalog.places || {});          // a map's label: its place (the one it leads out to on the world map), else its first story step's
-  $('sc_map').innerHTML = catalog.maps.map(m => `<option value="${m}">${m}${placeName[m] ? ' — ' + esc(placeName[m]) : ''}</option>`).join('');
+  const scene = new Set(catalog.no_entrance || []), mapOpt = m => `<option value="${m}">${m}${placeName[m] ? ' — ' + esc(placeName[m]) : ''}</option>`;
+  $('sc_map').innerHTML = catalog.maps.filter(m => !scene.has(m)).map(mapOpt).join('') + `<optgroup label="${esc(L.scene_maps)}">` + catalog.maps.filter(m => scene.has(m)).map(mapOpt).join('') + '</optgroup>';
   if (catalog.map && catalog.maps.includes(catalog.map)) $('sc_map').value = catalog.map;
   $('sc_world_at').innerHTML = `<option value="">${esc(L.world_here)}</option>` + (catalog.worlds || []).map(([t, places]) =>          // each world map of the game, the places on it
     `<optgroup label="${esc(L.world_n)} ${t + 1}">` + places.map(([k, p, m]) => `<option value="${k}">${esc(p)} (${esc(m)})</option>`).join('') + '</optgroup>').join('');
@@ -247,7 +287,6 @@ $('sc_fight').onclick = () => cmd({cmd: 'battle', row: $('sc_group').value, back
 $('sc_backdrop_go').onclick = () => cmd({cmd: 'backdrop', name: $('sc_backdrop').value}).then(r => { if (!r.error) showBackdrop($('sc_backdrop').value); });
 $('sc_item_find').oninput = renderItems;
 $('sc_give').onclick = () => cmd({cmd: 'give_item', item: +$('sc_item').value, count: +$('sc_count').value || 1});
-$('sc_gold_go').onclick = () => cmd({cmd: 'gold', amount: $('sc_gold').value.trim()});
 $('sc_apply').onclick = () => cmd({cmd: 'story_step', step: +$('sc_step').value, go: $('sc_step_go').checked}).then(refreshScenes);
 $('sc_on').onclick = () => cmd({cmd: 'flag', set: $('sc_set').value, n: +$('sc_n').value, on: true}).then(refreshScenes);
 $('sc_off').onclick = () => cmd({cmd: 'flag', set: $('sc_set').value, n: +$('sc_n').value, on: false}).then(refreshScenes);
@@ -261,37 +300,46 @@ const STATS = {fr: {AdventureTime: 'Temps d\'aventure (chapitre)', BattleCount: 
 const valueLabel = k => k.startsWith('stat:') ? ((STATS[lang] || STATS.en)[k.slice(5)] || k.slice(5)) : (L['v_' + k] || k);
 const hms = t => { const s = Math.floor(t / 60); return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };          // (play time: 1/60 s)
 const unhms = v => { const p = String(v).trim().split(':').map(Number); if (p.some(isNaN)) return NaN; let s = 0; for (const x of p) s = s * 60 + x; return Math.round(s * 60); };
+const MONEY = new Set(['gold', 'bank', 'coins', 'medals']), TIMES = new Set(['play_time', 'stat:AdventureTime']);
 async function refreshParty(force) {
-  if (!force && document.activeElement && $('t_party').contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;          // (not while a field is being typed in)
+  const typing = document.activeElement && document.activeElement.tagName === 'INPUT' && ($('t_party').contains(document.activeElement) || $('t_items').contains(document.activeElement) || $('t_activities').contains(document.activeElement));
+  if (!force && typing) return;          // (not while a field is being typed in)
   refreshExtras(force);
   const p = await get('/api/party'); const key = JSON.stringify(p); if (!force && key === partyKey) return; partyKey = key; party = p;
   $('pa_members').innerHTML = `<table><tr><th></th><th>${L.level}</th><th></th><th>${L.exp}</th><th></th><th></th></tr>` + p.members.map(m =>
     `<tr><td>${esc(m.name)} <span class="dim">#${m.id}</span></td>` + (m.guest ? `<td colspan="4" class="dim">${L.guest}</td>` :
-    `<td><input size="3" id="pl_${m.id}" value="${m.level}"></td><td><button data-lv="${m.id}">${L.set}</button></td>` +
-    `<td><input size="9" id="px_${m.id}" value="${m.exp}"></td><td><button data-xp="${m.id}">${L.set}</button></td>`) + `<td><button data-out="${m.id}">${L.remove}</button></td></tr>`).join('') + '</table>';
+    `<td>${num('pl_' + m.id, m.level, p.limits.level, `[data-lv='${m.id}']`)}</td><td><button data-lv="${m.id}">${L.set}</button></td>` +
+    `<td>${num('px_' + m.id, m.exp, p.limits.exp, `[data-xp='${m.id}']`)}</td><td><button data-xp="${m.id}">${L.set}</button></td>`) + `<td><button data-out="${m.id}">${L.remove}</button></td></tr>`).join('') + '</table>';
   const inside = new Set(p.members.map(m => m.id));
   $('pa_char').innerHTML = p.characters.filter(([n]) => !inside.has(n)).map(([n, name]) => `<option value="${n}">${esc(name)} — #${n}</option>`).join('');
-  $('pa_values').innerHTML = Object.entries(p.values).map(([k, v]) => `<span class="dim">${esc(valueLabel(k))}</span><span class="row" style="margin:0"><input size="11" id="pv_${k}" value="${k === 'play_time' || k === 'stat:AdventureTime' ? hms(v) : v}"><button data-val="${k}">${L.set}</button></span>`).join('');
+  const row = ([k, v]) => `<span class="dim">${esc(valueLabel(k))}</span><span class="row" style="margin:0">${(TIMES.has(k) ? timeField : num)('pv_' + k.replace(':', '_'), v, p.limits[k], `[data-val='${k}']`)}<button data-val="${k}">${L.set}</button></span>`;
+  $('pa_values').innerHTML = Object.entries(p.values).filter(([k]) => !MONEY.has(k)).map(row).join('');
+  $('it_money').innerHTML = Object.entries(p.values).filter(([k]) => MONEY.has(k)).map(row).join('');
   const act = (sel, fn) => { for (const b of document.querySelectorAll(sel)) b.onclick = () => fn(b).then(() => refreshParty(true)); };
   act('[data-lv]', b => cmd({cmd: 'party_level', id: +b.dataset.lv, level: +$('pl_' + b.dataset.lv).value}));
   act('[data-xp]', b => cmd({cmd: 'party_exp', id: +b.dataset.xp, exp: +$('px_' + b.dataset.xp).value}));
   act('[data-out]', b => cmd({cmd: 'party_quit', id: +b.dataset.out}));
-  act('[data-val]', b => { const k = b.dataset.val, v = $('pv_' + k).value; return cmd({cmd: 'value', key: k, value: k === 'play_time' || k === 'stat:AdventureTime' ? unhms(v) : +v}); });
+  act('[data-val]', b => { const k = b.dataset.val, v = $('pv_' + k.replace(':', '_')).value; return cmd({cmd: 'value', key: k, value: TIMES.has(k) ? unhms(v) : +v}); });
 }
 let extrasKey = '';
 async function refreshExtras(force) {
   const x = await get('/api/extras'); if (x.error) return; const key = JSON.stringify(x); if (!force && key === extrasKey) return; extrasKey = key;
   const box = (s, i, v, label) => s.kind === 'bits' ? `<label class="row" style="margin:0 8px 0 0"><input type="checkbox" data-ex="${s.id}" data-i="${i}"${v ? ' checked' : ''}> ${label}</label>`
-    : `<span class="row" style="margin:0 8px 0 0">${label} <input size="6" id="ex_${s.id}_${i}" value="${v}"><button data-exset="${s.id}" data-i="${i}">${L.set}</button></span>`;
+    : `<span class="row" style="margin:0 8px 0 0">${label} ${num(`ex_${s.id}_${i}`, v, [s.min ?? 0, s.max], `[data-exset='${s.id}'][data-i='${i}']`)}<button data-exset="${s.id}" data-i="${i}">${L.set}</button></span>`;
   $('h_extras').style.display = x.systems.length ? '' : 'none';
   $('pa_extras').innerHTML = x.systems.map(s => `<div class="row"><span class="dim">${esc(L['ex_' + s.id] || s.id)}</span> ` +
     (s.kind === 'number' ? box(s, 0, s.value, '') : s.items.map(([i, v]) => box(s, i, v, `${s.id === 'touch' ? L.place : L.course} ${i + 1}`)).join('')) + '</div>').join('');
   $('h_jobs').style.display = x.jobs ? '' : 'none';
   $('pa_jobs').innerHTML = x.jobs ? `<table><tr><th></th>${x.jobs.jobs.map(([j, n]) => `<th title="${esc(n)}">${esc(n.slice(0, 7))}</th>`).join('')}</tr>` + x.jobs.members.map(m =>
-    `<tr><td>${esc(m.name)}</td>${m.levels.map((lv, k) => `<td><input size="1" data-job="${k + 1}" data-m="${m.id}" value="${lv}"></td>`).join('')}</tr>`).join('') + '</table>' : '';
+    `<tr><td>${esc(m.name)}</td>${m.levels.map((lv, k) => `<td><input size="1" maxlength="1" class="nf" data-lo="0" data-hi="${x.jobs.max ?? 8}" data-job="${k + 1}" data-m="${m.id}" value="${lv}"></td>`).join('')}` +
+    `<td><button data-jobs="${m.id}" data-v="0">${L.min}</button><button data-jobs="${m.id}" data-v="${x.jobs.max ?? 8}">${L.max}</button></td></tr>`).join('') + '</table>' : '';
   for (const c of document.querySelectorAll('[data-ex]')) c.onchange = () => cmd({cmd: 'extra_set', id: c.dataset.ex, i: +c.dataset.i, value: c.checked ? 1 : 0}).then(() => refreshExtras(true));
   for (const b of document.querySelectorAll('[data-exset]')) b.onclick = () => cmd({cmd: 'extra_set', id: b.dataset.exset, i: +b.dataset.i, value: +$(`ex_${b.dataset.exset}_${b.dataset.i}`).value}).then(() => refreshExtras(true));
   for (const c of document.querySelectorAll('[data-job]')) c.onchange = () => cmd({cmd: 'job_level', id: +c.dataset.m, job: +c.dataset.job, level: +c.value}).then(() => refreshExtras(true));
+  for (const b of document.querySelectorAll('[data-jobs]')) b.onclick = async () => {          // (every vocation of that member at once)
+    for (const c of document.querySelectorAll(`[data-job][data-m='${b.dataset.jobs}']`)) await cmd({cmd: 'job_level', id: +b.dataset.jobs, job: +c.dataset.job, level: +b.dataset.v});
+    refreshExtras(true);
+  };
 }
 $('pa_join').onclick = () => cmd({cmd: 'party_join', id: +$('pa_char').value}).then(() => setTimeout(() => refreshParty(true), 300));
 $('pa_items').onclick = () => cmd({cmd: 'items_max'});
@@ -340,7 +388,11 @@ $('tx_custom').oninput = () => { $('tx_custom_count').textContent = $('tx_custom
 $('tx_custom_show').onclick = () => cmd({cmd: 'show_custom', text: $('tx_custom').value});
 $('tx_prev').onclick = () => stepText(-1);
 $('tx_next').onclick = () => stepText(1);
-const PAGES = {t_texts: refreshTexts, t_book: refreshBook, t_party: refreshParty, t_scenes: refreshScenes, t_packets: refreshPackets, t_menus: refreshMenus, t_objects: refreshObjects, t_states: refreshStates};
+async function refreshItems() { if (!catalog) await loadCatalog(); return refreshParty(); }
+async function refreshActivities() { if (!catalog) await loadCatalog(); return refreshExtras(); }
+async function ensureCatalog() { if (!catalog) return loadCatalog(); }
+const PAGES = {t_texts: refreshTexts, t_book: refreshBook, t_party: refreshParty, t_items: refreshItems, t_activities: refreshActivities, t_places: ensureCatalog, t_story: refreshScenes,
+  t_fights: ensureCatalog, t_packets: refreshPackets, t_menus: refreshMenus, t_objects: refreshObjects, t_states: refreshStates};
 async function refresh() {
   try { const v = await get('/api/state'); if (v.error) throw new Error(v.error); last = v; renderState(v); $('msg').textContent = ''; } catch (e) { $('msg').textContent = String(e); }
   if (PAGES[tab] && (tab !== 't_states' || !refresh.statesShown)) { try { await PAGES[tab](); } catch (e) { $('msg').textContent = String(e); } }

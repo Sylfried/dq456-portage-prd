@@ -617,6 +617,7 @@
   {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "un messaggio è già mostrato: chiudilo prima"},
   {"key": "debug.texts_shown", "en": "message %d shown", "text": "messaggio %d mostrato"},
   {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "il personaggio %d è un ospite: il gioco non gli dà un livello"},
-  {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "scrivi un testo (al massimo %d caratteri)"}
+  {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "scrivi un testo (al massimo %d caratteri)"},
+  {"key": "debug.party_value_range", "en": "from %d to %d", "text": "da %d a %d"}
  ]
 }
