@@ -9,10 +9,9 @@
 - Switches: the three sets of 1,024 the scripts test (`status::g_GlobalFlag`, `g_AreaFlag`, `g_LocalFlag`), each bit readable and changeable.
 - Items and gold: an item given as the game gives one it finds (`PartyStatus::giveItem`: the first member with room, otherwise the bag), gold added or taken as
   the scripts' own "gold" command does (`cmd_set_gold`: the game's limits apply).
-- Fights. A boss (a row a script starts) is fought at its own place, as its script does: the map whose script starts it is loaded first, then
-  `Encount::forceEventBrew(row)` (DQ IV: `BattleScriptManager::setEncountMap(row)` before it, as `cmd_encount` does): the backdrop is the place's own.
-  Any other fight only where the game itself could start a random encounter at that moment, as its whistle does (ENCOUNT_ON...): never in a town,
-  nor where a map or the story switches them off; then `Encount::forceEncount()`: a random encounter (its backdrop, the world map's ground included).
+- Fights, from where the hero stands: a boss (a row a script starts) as its script starts it, before its own place's backdrop; any other group as the
+  scripts' ordinary fight (`Encount::forceBrew`), before the backdrop asked, the sea's for a group only met at sea, otherwise the place's (Catalog.battle).
+  The backdrops are listed with what they show: a terrain of the world map, or the places the game gives them (their floor parameters).
 
 The calls that start a scene (startTown, startField, startBattle) are made during an engine step, just before GameUpdate: their packets (the fade) are then
 read with the step's, as the game's own scripts do; outside a step they would be lost."""
@@ -73,7 +72,19 @@ STADIUM = ('_ZN19FightStadiumManager12getSingletonEv', '_ZN19FightStadiumManager
 MINIGAME_CMD = {'dq4': ('_Z13cmd_mini_gameP16CommandParameter', 4), 'dq5': ('_Z11cmdMiniGamePv', 0)}          # (function, offset of the game number in its block)
 START_BOOK = '_ZN6Global9startBookEv'                                   # copies of an item given at once
 MONSTER_NAMES = 'assets/msg/en/b1002000.mpt'           # monster names: how many there are (the French patch writes its texts in the English slot)
-ARRIVAL_STEPS = 900                                   # a boss's map must be shown, faded in and the player free within this many engine steps
+ARRIVAL_STEPS = 900                                   # a fight asked must have started within this many engine steps (its backdrop's name is then put back)
+BATTLE_MAP = {'dq4': ('_ZN6status7g_StageE', '_ZN6status11StageStatus13setBtlMapNameEPKc', '_ZN6status11StageStatus15setEvBtlMapNameEPKc', '_ZN6status11StageStatus13getBtlMapNameEv'),
+              'dq5': ('_ZN6status16g_StageAttributeE', '_ZN6status14StageAttribute13setBtlMapNameEPKc', '_ZN6status14StageAttribute15setEvBtlMapNameEPKc', '_ZN6status14StageAttribute13getBtlMapNameEv')}
+BATTLE_MAP['dq6'] = BATTLE_MAP['dq5']                 # (the place's battle map name: the scenery the next fight loads; getBtlMapName adds the time of day)
+SEA_BACKDROP, PLAIN_BACKDROP = 'btl_se_d', 'btl_pl_d'  # a group only met at sea; a place without a battle map (the time of day follows the place's: getBtlMapName)
+DQ4_FLOOR = ('_ZN6status10excelParamE', 0x100, 42)    # DQ IV's param::FloorParam (pointer at excelParam + 0x100, rows of 42 bytes: see Catalog.floor_battle_maps)
+FLOOR_ROWS_MAX = 2000
+FLOOR_PARAM = 'assets/leveldata/%sds_floor_param.dat'   # DQ V / VI: a row per row of the floor list (same order): its battle map numbers
+BATTLE_MAPS = 'assets/leveldata/%sds_battle_map.dat'    # DQ V / VI: the battle maps (number at + 3, name at + 4)
+FLOOR_BATTLE = {'dq5': (2, 3), 'dq6': (1, 2)}           # offsets of the battle map number and of the event one in a floor_param row (signed byte)
+SEA_TILES_DQ5 = (('EncountSeaTile1', True), ('EncountSeaTile2', True), ('EncountTile1', False), ('EncountTile2', False), ('EncountTile3', False),
+                 ('EncountDarkTile', False), ('EncountFairyTile', False))          # DQ V's world maps: zone of each tile, at sea or on land
+SEA_TILES_DQ6 = 'assets/leveldata/%sds_encount_tile_'    # DQ VI: <...>upsea / downsea / bottomsea.dat at sea, the others on land
 MAP_LINK = 'assets/map/map_link.bin'                  # the game's links between maps (doors, stairs, exits): DQ IV by map name (NAME, DATA, HASH), DQ V / VI by map number (DATA, INDX)
 FLOOR_LIST = 'assets/leveldata/%sds_floor_list.dat'   # DQ V / VI: map number (u16) and name (+ 4) of every map
 FIELD = '<field>'                                     # the world map in the links (DQ IV: "world"; DQ V: map 999, DQ VI: 9999)
@@ -246,13 +257,12 @@ class Catalog:
         self.in_step = []                                 # calls to make during the next engine step (just before GameUpdate)
         self._steps = None; self._maps = None; self._bosses = None
         self.g.engine.step_calls = self._take_in_step        # (Engine.step makes them right before GameUpdate and keeps their packets)
-        self.pending = None                               # a boss waiting for its map: (row, map, engine frame of the request)
-        self.restore = None                               # an ordinary fight of another row than the place's: (the place's row, engine frame of the request)
+        self.restore = None                               # a fight started here: [engine frame of the request, started]; its backdrop (g.fight_scenery) until it ends
         service.ticks.append(self.tick)
         self._field_return()
         service.panel_pages['/api/catalog'] = self.info
         service.panel_commands.update({'goto_map': self.goto_map, 'goto_world': self.goto_world, 'story_step': self.story_step, 'flag': self.set_flag, 'battle': self.battle,
-                                         'give_item': self.give_item, 'gold': self.give_gold, 'battle_here': self.battle_here, 'minigame': self.minigame, 'book': self.open_book,
+                                         'give_item': self.give_item, 'gold': self.give_gold, 'battle_here': self.battle, 'minigame': self.minigame, 'book': self.open_book,
                                          'backdrop': self.set_backdrop})
 
     def _field_return(self):
@@ -404,7 +414,7 @@ class Catalog:
         if q and q.get('only') == 'flags': return {'map': self.g.engine.state.game_map, 'flags': self.flags()}          # (what changes: asked again while the tab is open)
         return {'game': self.key, 'map': self.g.engine.state.game_map, 'maps': self.maps(), 'worlds': self.worlds(), 'steps': self.steps(), 'flags': self.flags(),
                 'bosses': self.bosses(), 'items': self.items(), 'encounters': self.encounters(), 'minigames': [m[0] for m in MINIGAMES.get(self.key, ())],
-                'backdrops': self.backdrops(), 'backdrop': getattr(self.g, 'battle_scenery', None),
+                'backdrops': self.backdrop_list(), 'backdrop': getattr(self.g, 'battle_scenery', None), 'sea_rows': sorted(self.sea_rows()), 'places': self.map_places(),
                 'in_battle': self.g.engine.state.part == ENGINE.PART_BATTLE}
 
     # --- commands ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -500,45 +510,138 @@ class Catalog:
         core = self.g.engine.core
         return core.call(core.export(ENCOUNT[self.key][0]), label='Encount::getSingleton')
 
-    def why_no_fight_here(self):
-        """None if the game itself could start a random encounter here and now (the whistle's conditions), else why not (in French, for the panel)."""
-        e = self.g.engine.state; core = self.g.engine.core; k = self.key
-        if e.part not in (ENGINE.PART_TOWN, ENGINE.PART_FIELD): return tr(N_('debug.catalog_not_now'))
-        obj, fn = STAGE_ENCOUNT[k]
-        if not core.call(core.export(fn), core.export(obj), label='isEncount') & 1: return tr(N_('debug.catalog_map_no_random'))
-        enc = self._encount()
-        if core.mem(enc + ENCOUNT_ON[k], 1)[0] != 1: return tr(N_('debug.catalog_story_no_random'))
-        row = struct.unpack('<i', core.mem(enc + ENCOUNT_ZONE, 4))[0]
-        if row in (-1, 0) or (k == 'dq4' and e.part == ENGINE.PART_TOWN and not core.call(core.export(IS_ENCOUNT_STAGE), enc, core.cstr((e.game_map or '').encode()), label='Encount::isEncountStage')):
-            return tr(N_('debug.catalog_nothing_attacks'))
-        return None
-
     def battle(self, c):
-        """A boss: at its own place (boss_fight). Another fight only where the game itself could start a random encounter (why_no_fight_here), as its
-        whistle does: Encount::forceEncount() during the next step; the place's own group, or the row asked (Encount + 8 for that fight, then the place's)."""
-        raw = str(c.get('row', '')).strip(); row = int(raw) if raw.lstrip('-').isdigit() else None
-        if row is not None and row in dict((r, m) for r, _mons, m in self.bosses()): return self.boss_fight(row)
-        why = self.why_no_fight_here()
-        if why: return {'error': tr(N_('debug.catalog_no_fight')) % why}
-        core = self.g.engine.core; enc = self._encount(); here = struct.unpack('<i', core.mem(enc + ENCOUNT_ZONE, 4))[0]
-        if row is None or row == here: row = here
-        else: self.restore = (here, self.g.engine.frames)
-        def start():
-            if row != here: core.mem_w(enc + ENCOUNT_ZONE, struct.pack('<i', row))
-            core.call(core.export(FORCE_ENCOUNT[self.key]), enc, label='Encount::forceEncount')
-        self.in_step.append(start); self.d.note(tr(N_('debug.catalog_fight_row')) % row)
-        return {'ok': True, 'row': row}
-
-    def battle_here(self, c):
-        """Any encounter row, here, from a town too: Encount::forceBrew(row), the scripts' own ordinary fight (cmd_encount, mode 0), during the next step; the place's backdrop."""
-        raw = str(c.get('row', '')).strip()
-        if not raw.lstrip('-').isdigit(): return {'error': tr(N_('debug.catalog_row_bad')) % raw}
-        row = int(raw); e = self.g.engine.state
+        """Any fight, from where the hero stands (a town, a dungeon or the world map), during the next step. A boss (a row a script starts) as its script
+        starts it (`Encount::forceEventBrew(row)`, DQ IV: `BattleScriptManager::setEncountMap(row)` before it; or `forceBrew`), before its own place's backdrop
+        (boss_backdrop); any other group as the scripts' ordinary fight does (`forceBrew(row)`), before the backdrop asked, the sea's for a group the game only
+        sends at sea, otherwise the place's own. The backdrop asked is drawn by the port (`fight_scenery`, window/field.py: the engine's fight is the same; its
+        time of day follows the engine's), until the fight ends (tick). The engine gets a battle map name where the place has none (StageStatus /
+        StageAttribute::setBtlMapName, the event one for an event fight): without one it stopped (DQ V's world map). No row: the place's own group."""
+        e = self.g.engine.state
         if e.part not in (ENGINE.PART_TOWN, ENGINE.PART_FIELD): return {'error': tr(N_('debug.catalog_not_now'))}
+        raw = str(c.get('row', '')).strip()
+        if raw and not raw.lstrip('-').isdigit(): return {'error': tr(N_('debug.catalog_row_bad')) % raw}
         core = self.g.engine.core
-        self.in_step.append(lambda: core.call(core.export(ENCOUNT[self.key][2]), self._encount(), row, label='Encount::forceBrew'))
-        self.d.note(tr(N_('debug.catalog_fight_row')) % row)
-        return {'ok': True, 'row': row}
+        row = int(raw) if raw else struct.unpack('<i', core.mem(self._encount() + ENCOUNT_ZONE, 4))[0]
+        if not raw and row in (-1, 0): return {'error': tr(N_('debug.catalog_no_fight')) % tr(N_('debug.catalog_nothing_attacks'))}
+        asked = str(c.get('backdrop') or '').strip().lower() or None
+        if asked is not None and asked not in self.backdrops(): return {'error': tr(N_('debug.catalog_unknown_map')) % asked}
+        boss = row in {r for r, _mons, _m in self.bosses()}; event = boss and getattr(self, '_modes', {}).get(row, 1) == 1
+        sea = not boss and row in self.sea_rows()
+        if boss: name = asked or self.boss_backdrop(row)
+        else: name = SEA_BACKDROP if sea else asked
+        def start():
+            enc = self._encount(); here = self.place_backdrop()
+            if here is None or event: self._set_backdrop(here or PLAIN_BACKDROP, event)          # (the engine needs one: the event one is otherwise what the last event fight left)
+            if boss and event and self.key == 'dq4':                          # (cmd_encount, mode 1: the event battle map of a few rows, at their place, then the fight)
+                bsm = core.call(core.export(SET_ENCOUNT_MAP[0]), label='BattleScriptManager::getSingleton')
+                core.call(core.export(SET_ENCOUNT_MAP[1]), bsm, row, label='BattleScriptManager::setEncountMap')
+            self.g.fight_scenery = name; core.call(core.export(ENCOUNT[self.key][1 if event else 2]), enc, row, label='Encount::forceEventBrew' if event else 'Encount::forceBrew')
+        self.in_step.append(start); self.restore = [self.g.engine.frames, False]
+        self.d.note(tr(N_('debug.catalog_fight_row')) % row + (' — %s' % name if name else ''))
+        return {'ok': True, 'row': row, 'boss': boss, 'backdrop': name}
+
+    def _backdrop_fns(self):
+        obj, set_name, set_event, get_name = BATTLE_MAP[self.key]; core = self.g.engine.core
+        return core.export(obj), core.export(set_name), core.export(set_event), core.export(get_name)
+
+    def place_backdrop(self):
+        """The battle map name the engine has for this place (its time of day included), None without one."""
+        obj, _s, _e, get = self._backdrop_fns(); core = self.g.engine.core
+        if not obj or not get: return None
+        a = core.call(get, obj, label='getBtlMapName')
+        n = core.read_cstr(a) if a else None
+        n = n.decode('ascii', 'replace') if isinstance(n, (bytes, bytearray)) else n
+        return n if n and n.startswith('btl') else None
+
+    def _set_backdrop(self, name, event=False):
+        """The engine's battle map name (the event one for an event fight: forceEventBrew copies it)."""
+        obj, set_name, set_event, _g = self._backdrop_fns(); f = set_event if event else set_name; core = self.g.engine.core
+        if obj and f: core.call(f, obj, core.cstr(name.encode()), label='setBtlMapName')
+
+    def sea_rows(self):
+        """The encounter rows the game only sends at sea: DQ IV, the randomizer's catalog (its sea table); DQ V, the zones of its sea tile maps
+        (dq5::level::getEncountSeaTile1 / 2, a byte per tile) that no land tile map has (EncountTile1-3, Dark, Fairy); DQ VI, the same with its files
+        <game>ds_encount_tile_*sea.dat and the others (a byte per tile after 4 bytes)."""
+        if getattr(self, '_sea', None) is None:
+            sea = set(); land = set()
+            try:
+                core = self.g.engine.core
+                if self.key == 'dq4':
+                    self.bosses(); cat = getattr(self, '_encounter_catalog', None)
+                    sea = {z for z, f in (cat.family.items() if cat is not None else ()) if f == 'sea'}
+                elif self.key == 'dq5':
+                    for tile, into in SEA_TILES_DQ5:
+                        get = core.export('_ZN3dq55level%dget%sEv' % (len('get' + tile), tile)); cls = 'EncountSeaTile%s' % tile[-1] if 'Sea' in tile else tile
+                        w, h = (core.export('_ZN3dq55level%d%s%d%sE' % (len(cls), cls, len(f), f)) for f in ('width_', 'height_'))
+                        if get and w and h:
+                            n = struct.unpack('<i', core.mem(w, 4))[0] * struct.unpack('<i', core.mem(h, 4))[0]
+                            (sea if into else land).update(core.mem(core.call(get, label=tile), max(0, min(n, 1 << 16))))
+                else:
+                    fs = core.fs
+                    for p in fs.names:
+                        if p.startswith(SEA_TILES_DQ6 % self.key): (sea if p.endswith('sea.dat') else land).update(fs.names[p].read(p)[4:])
+            except Exception as ex: self.d.note('catalog sea: %s' % ex)
+            self._sea = sea - land - {0}
+        return self._sea
+
+    def floor_battle_maps(self):
+        """{map: (backdrop, event backdrop)} the game gives each map (its floor parameters; None where it gives none). DQ IV: param::FloorParam in memory
+        (status::excelParam + 0x100: rows of 42 bytes, the map's name at + 2, its battle map at + 10, the event one at + 21); DQ V / VI: the rows of
+        <game>ds_floor_list.dat (map number, name at + 4) and, in the same order, of <game>ds_floor_param.dat (battle map numbers, FLOOR_BATTLE), the
+        names in <game>ds_battle_map.dat (number at + 3, name at + 4)."""
+        if getattr(self, '_floor_maps', None) is None:
+            out = {}
+            def text(b): return b.split(b'\0')[0].decode('ascii', 'replace')
+            try:
+                core = self.g.engine.core
+                if self.key == 'dq4':
+                    sym, at, size = DQ4_FLOOR; base = core.export(sym)
+                    tab = struct.unpack('<Q', core.mem(base + at, 8))[0] if base else 0
+                    for i in range(FLOOR_ROWS_MAX if tab else 0):
+                        r = core.mem(tab + size * i, size); m = text(r[2:10])
+                        if not m: break
+                        out[m] = (text(r[10:21]), text(r[21:32]))
+                else:
+                    fs = core.fs; read = lambda n: fs.names[n].read(n)
+                    maps = {r[3]: text(r[4:]) for r in level_rows(read(BATTLE_MAPS % self.key)) if len(r) > 4}
+                    b, ev = FLOOR_BATTLE[self.key]
+                    for row, prm in zip(level_rows(read(FLOOR_LIST % self.key)), level_rows(read(FLOOR_PARAM % self.key))):
+                        name = text(row[4:])
+                        if name: out[name] = (maps.get(struct.unpack_from('b', prm, b)[0]), maps.get(struct.unpack_from('b', prm, ev)[0]))
+            except Exception as ex: self.d.note('catalog backdrops: %s' % ex)
+            self._floor_maps = {m: tuple(n if n and n.startswith('btl') else None for n in v) for m, v in out.items()}
+        return self._floor_maps
+
+    def boss_backdrop(self, row):
+        """A boss's backdrop: its place's event battle map, otherwise its battle map (None: the engine's own)."""
+        b, ev = self.floor_battle_maps().get(self.boss_places().get(row), (None, None))
+        return ev or b
+
+    def map_places(self):
+        """{map: name of its place}: the place on the world map it leads out to (worlds), else its first story step's name."""
+        if getattr(self, '_map_places', None) is None:
+            self.entrances(); out = {}; keys = {k: p for _t, ps in self.worlds() for k, p, _m in ps}
+            for m, k in self._exits.items():
+                if k in keys: out[m] = keys[k]
+            for _n, name, m in self.steps():
+                if m and name and m not in out: out[m] = name.split(' (')[0]
+            self._map_places = out
+        return self._map_places
+
+    def backdrop_list(self):
+        """[(name, terrain, number, time, [places])] of the battle sceneries: a terrain the world map uses (btl_<terrain><number>_<time>), or the places
+        whose maps the game gives that scenery (floor_battle_maps, its time variants together)."""
+        users = {}; places = self.map_places()
+        for m, names in self.floor_battle_maps().items():
+            for n in names:
+                if n: users.setdefault(re.sub(r'_(dk|d|e|n)$', '', n), set()).add(places.get(m) or m)
+        out = []
+        for n in self.backdrops():
+            base, time = (re.match(r'^(.*?)(?:_(dk|d|e|n))?$', n).groups())
+            t = re.match(r'^btl_([a-z]+)(\d*)$', base)
+            out.append([n, t.group(1) if t else '', t.group(2) if t else '', time or '', sorted(users.get(base, ()))])
+        return out
 
     def minigame(self, c):
         """A mini-game started from here (MINIGAMES), during the next step."""
@@ -596,40 +699,14 @@ class Catalog:
         m = get and save and core.call(get, label=fns[0])
         if m: core.call(save, m, label=fns[1])
 
-    def boss_fight(self, row):
-        """The boss of that row at its own place: its map is loaded first if needed, the fight starts once the map is shown and the player free (tick)."""
-        place = self.boss_places().get(row)
-        if place is None or place not in self.maps(): return {'error': tr(N_('debug.catalog_boss_no_map')) % row}
-        e = self.g.engine.state
-        if e.part not in (ENGINE.PART_TOWN, ENGINE.PART_FIELD): return {'error': tr(N_('debug.catalog_not_now'))}
-        self.pending = (row, place, self.g.engine.frames)
-        if e.game_map != place: self.in_step.append(lambda: self.start_town(place))
-        self.d.note(tr(N_('debug.catalog_boss')) % (row, place))
-        return {'ok': True, 'map': place}
-
     def tick(self):
-        """Each loop frame: the place's encounter row back once an ordinary fight of another row has started; a boss waiting for its map starts when
-        the map is shown, faded in and the player free. A mini-game started on the world map: armed once its own part has started, forgotten once the
+        """Each loop frame: the backdrop of a fight started here forgotten once it has ended. A mini-game started on the world map: armed once its own part has started, forgotten once the
         world map or a town is back (whatever brought it back: only the mini-game's end may become the world map, see _field_return)."""
         if self.from_field:
             p = self.g.engine.state.part; outside = p not in (ENGINE.PART_FIELD, ENGINE.PART_TOWN)
             if self.from_field == 'pending' and outside: self.from_field = 'armed'
             elif self.from_field == 'armed' and not outside: self.from_field = False
-        if self.restore is not None:
-            here, asked = self.restore; eng = self.g.engine
-            if eng.state.part == ENGINE.PART_BATTLE or eng.frames - asked > ARRIVAL_STEPS:
-                self.restore = None; eng.core.mem_w(self._encount() + ENCOUNT_ZONE, struct.pack('<i', here))
-        if self.pending is None: return
-        row, place, asked = self.pending; g = self.g; eng = g.engine; e = eng.state
-        if eng.frames - asked > ARRIVAL_STEPS: self.pending = None; self.d.note(tr(N_('debug.catalog_boss_not_reached')) % (row, place)); return
-        if e.game_map != place or e.part != ENGINE.PART_TOWN or getattr(g, 'map_name', None) != place: return
-        if eng.flags() & (ENGINE.FADE_FLAG | ENGINE.PLAYER_LOCKED_FLAG) or getattr(e, 'load_wait', None) is not None or self.in_step: return
-        self.pending = None; core = eng.core
-        event = getattr(self, '_modes', {}).get(row, 1) == 1
-        def start():
-            if not event: core.call(core.export(ENCOUNT[self.key][2]), self._encount(), row, label='Encount::forceBrew'); return          # (the script's mode 0)
-            if self.key == 'dq4':                                    # (cmd_encount, mode 1: the event battle map of the row, then the fight)
-                bsm = core.call(core.export(SET_ENCOUNT_MAP[0]), label='BattleScriptManager::getSingleton')
-                core.call(core.export(SET_ENCOUNT_MAP[1]), bsm, row, label='BattleScriptManager::setEncountMap')
-            core.call(core.export(ENCOUNT[self.key][1]), self._encount(), row, label='Encount::forceEventBrew')
-        self.in_step.append(start)
+        if self.restore is not None:                       # (the backdrop drawn for a fight started here: forgotten once it has ended, or if it never started)
+            eng = self.g.engine; inside = eng.state.part == ENGINE.PART_BATTLE
+            if inside: self.restore[1] = True
+            elif self.restore[1] or eng.frames - self.restore[0] > ARRIVAL_STEPS: self.restore = None; self.g.fight_scenery = None

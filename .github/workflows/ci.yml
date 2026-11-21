@@ -90,6 +90,7 @@ jobs:
           python tests/test_debug_recorder.py
           python tests/test_debug_panel.py
           python tests/test_debug_catalog.py
+          python tests/test_battle_scenery_time_of_day.py
           python tests/test_return_to_title.py
           python tests/test_smooth_objects.py
           python tests/test_battle_tactics_icons.py

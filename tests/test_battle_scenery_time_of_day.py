@@ -29,6 +29,11 @@ class Fallback(unittest.TestCase):
         self.assertEqual(DO.fallback_sceneries('btl_se_dk'), ['btl_se_n', 'btl_se_d', 'btl_se_e', 'btl_se'])      # dark world: the engine asks for btl_se_dk, absent from the data (only pl, po, wd and tc1 have it)
         for name_str in ('btlcb2', 'ev01', '', None): self.assertEqual(DO.fallback_sceneries(name_str), [], name_str)
 
+    def test_chosen_scenery_at_the_engines_time(self):
+        """a backdrop chosen in the debug panel takes the time of day the engine asks when both have one, otherwise stays as chosen"""
+        self.assertEqual(DO.with_time_of('btl_se_d', 'btl_pl_n'), 'btl_se_n'); self.assertEqual(DO.with_time_of('btltc1_d', 'btl_pl_dk'), 'btltc1_dk')
+        for chosen, engine in (('btlca1', 'btl_pl_n'), ('btl_se_d', 'btlcb2'), ('btl_dk2', 'btl_pl_e')): self.assertEqual(DO.with_time_of(chosen, engine), chosen)
+
 
 class BackgroundFETC(unittest.TestCase):
     @staticmethod

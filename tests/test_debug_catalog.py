@@ -23,7 +23,8 @@ SYMS = {'_ZN7Encount9forceBrewEi': 0x910, '_ZN3btl7Encount9forceBrewEi': 0x910, 
         CT.STEP_COUNT_DQ4: 0x300, '_ZN7Encount12getSingletonEv': 0x908, '_ZN7Encount14forceEventBrewEi': 0x90c,
         '_ZN3btl7Encount12getSingletonEv': 0x908, '_ZN3btl7Encount14forceEventBrewEi': 0x90c,
         '_ZN7Encount12forceEncountEv': 0x920, '_ZN3btl7Encount12forceEncountEv': 0x920, '_ZN6status7g_StageE': 0x400, '_ZN6status16g_StageAttributeE': 0x400,
-        '_ZNK6status11StageStatus9isEncountEv': 0x924, '_ZNK6status14StageAttribute9isEncountEv': 0x924}
+        '_ZNK6status11StageStatus9isEncountEv': 0x924, '_ZNK6status14StageAttribute9isEncountEv': 0x924,
+        CT.BATTLE_MAP['dq4'][1]: 0x940, CT.BATTLE_MAP['dq4'][2]: 0x940, CT.BATTLE_MAP['dq5'][1]: 0x940, CT.BATTLE_MAP['dq5'][2]: 0x940}
 
 
 def GM_key():
@@ -53,6 +54,7 @@ class Core:
         if 'getSingleton' in (label or ''): return 0x777
         if 'isEncountStage' in (label or ''): return self.encount_stage
         if label == 'isEncount': return self.stage_encount
+        if label == 'getBtlMapName': return 0
         return 0
 
 
@@ -129,38 +131,46 @@ class Catalog(unittest.TestCase):
         self.assertEqual((args[0], args[2]), (0x500, 0x1001))                           # (the game's own link object, the map's entrance key)
         self.assertEqual(self.c.in_step, [])
 
-    def test_boss_at_its_place(self):
-        e = self.g.engine; c = self.c; c._places = {157: 'caf1'}
+    def test_boss_from_here(self):
+        """a boss from where the hero stands (no map loaded), as its script starts it, before its own place's backdrop (the event one first); the engine
+        gets an event battle map name (none here); the backdrop drawn until the fight ends"""
+        e = self.g.engine; c = self.c; c._places = {157: 'caf1'}; c._floor_maps = {'caf1': ('btlca1', 'btlca2')}
         e.state.game_map = 'mbk1f1'; self.g.map_name = 'mbk1f1'
-        self.assertEqual(c.battle({'row': 157}), {'ok': True, 'map': 'caf1'})       # from a town: allowed for a boss
+        self.assertEqual(c.battle({'row': 157}), {'ok': True, 'row': 157, 'boss': True, 'backdrop': 'btlca2'})
         e.run_step_calls()
-        self.assertTrue(self.entered('caf1'))
-        c.tick(); self.assertEqual(c.in_step, [])                                      # (its map not shown yet)
-        e.state.game_map = 'caf1'; self.g.map_name = 'caf1'; c.tick()
-        e.run_step_calls()
+        self.assertFalse(self.entered('caf1'))                                         # (no map loaded)
         labels = [l for l, a in e.core.calls]
         self.assertIn(('Encount::forceEventBrew', (0x777, 157)), e.core.calls)
+        self.assertLess(labels.index('setBtlMapName'), labels.index('Encount::forceEventBrew'))
+        self.assertEqual(e.core.calls[labels.index('setBtlMapName')][1][0], 0x400)            # (the stage's)
         if not ENGINE.ENGINE_V2: self.assertLess(labels.index('BattleScriptManager::setEncountMap'), labels.index('Encount::forceEventBrew'))
-        self.assertIsNone(c.pending)
+        self.assertEqual(self.g.fight_scenery, 'btlca2')
+        e.state.part = ENGINE.PART_BATTLE; c.tick(); self.assertEqual(self.g.fight_scenery, 'btlca2')
+        e.state.part = ENGINE.PART_TOWN; c.tick(); self.assertIsNone(self.g.fight_scenery)          # (the fight over: the place's own again)
+        c._floor_maps = {}; c._backdrops = ['btl_pl_d']; self.assertEqual(c.battle({'row': 157, 'backdrop': 'btl_pl_d'})['backdrop'], 'btl_pl_d')          # (one asked)
 
-    def test_ordinary_fight_only_where_the_game_allows_one(self):
-        e = self.g.engine; c = self.c; core = e.core; c._places = {157: 'caf1'}; key = GM_key()
-        on = 0x777 + CT.ENCOUNT_ON[key]; core.ram[on] = 1; core.encount_stage = 1
+    def test_any_group_from_here(self):
+        """the place's own group, or any row, from a town too (forceBrew, the scripts' ordinary fight); the backdrop asked, the sea's for a group only met at
+        sea, otherwise the place's (none drawn: the engine's)"""
+        e = self.g.engine; c = self.c; core = e.core; c._places = {157: 'caf1'}; c._backdrops = ['btl_pl_d', 'btl_se_d', 'btlca1']; c._sea = {3}
+        e.state.part = ENGINE.PART_TOWN
         struct.pack_into('<i', core.ram, 0x777 + CT.ENCOUNT_ZONE, -1 if not ENGINE.ENGINE_V2 else 0)
-        self.assertIn(tr(N_('debug.catalog_nothing_attacks')), c.battle({'row': ''})['error'])                 # nothing attacks there
+        self.assertIn(tr(N_('debug.catalog_nothing_attacks')), c.battle({'row': ''})['error'])                 # (no row: the place's, nothing attacks there)
         struct.pack_into('<i', core.ram, 0x777 + CT.ENCOUNT_ZONE, 86)
-        core.stage_encount = 0; self.assertIn(tr(N_('debug.catalog_map_no_random')), c.battle({'row': ''})['error'])          # a town: the map has none
-        core.stage_encount = 1; core.ram[on] = 0; self.assertIn(tr(N_('debug.catalog_story_no_random')), c.battle({'row': ''})['error'])   # switched off by a script
-        core.ram[on] = 1
-        r = c.battle({'row': ''}); self.assertEqual(r, {'ok': True, 'row': 86})       # the place's own group, as a random encounter
-        e.run_step_calls()
-        self.assertIn(('Encount::forceEncount', (0x777,)), core.calls)
-        r = c.battle({'row': '12'}); self.assertEqual(r, {'ok': True, 'row': 12})      # another group: Encount + 8 for that fight...
-        e.run_step_calls()
-        self.assertEqual(struct.unpack_from('<i', core.ram, 0x777 + CT.ENCOUNT_ZONE)[0], 12)
-        e.state.part = ENGINE.PART_BATTLE; c.tick()                                    # ... then the place's again
-        self.assertEqual(struct.unpack_from('<i', core.ram, 0x777 + CT.ENCOUNT_ZONE)[0], 86)
-        self.assertIn('error', c.battle({'row': '157'}))                               # (not from a battle)
+        self.assertEqual(c.battle({'row': ''}), {'ok': True, 'row': 86, 'boss': False, 'backdrop': None}); e.run_step_calls()
+        self.assertIn(('Encount::forceBrew', (0x777, 86)), core.calls); self.assertIsNone(self.g.fight_scenery)
+        self.assertEqual(c.battle({'row': '12', 'backdrop': 'btlca1'})['backdrop'], 'btlca1'); e.run_step_calls()
+        self.assertIn(('Encount::forceBrew', (0x777, 12)), core.calls); self.assertEqual(self.g.fight_scenery, 'btlca1')
+        self.assertEqual(c.battle({'row': '3', 'backdrop': 'btlca1'})['backdrop'], CT.SEA_BACKDROP)          # (only met at sea)
+        self.assertIn('error', c.battle({'row': '12', 'backdrop': 'town1'})); self.assertIn('error', c.battle({'row': 'x'}))
+        e.state.part = ENGINE.PART_BATTLE; self.assertIn('error', c.battle({'row': '157'}))                   # (not from a battle)
+
+    def test_backdrops_described(self):
+        """each backdrop: a terrain (and its number, its time of day), or the places the game gives it (their maps' floor parameters, the time variants together)"""
+        c = self.c; c._backdrops = ['btl_pl_d', 'btl_dk2', 'btlca1', 'btlcb1_n', 'btlzz9']
+        c._floor_maps = {'caf1': ('btlca1', None), 'cbf1': ('btlcb1', 'btlca1'), 'xyz': (None, None)}; c._map_places = {'caf1': 'Castle A', 'cbf1': 'Castle B'}
+        self.assertEqual(c.backdrop_list(), [['btl_pl_d', 'pl', '', 'd', []], ['btl_dk2', 'dk', '2', '', []], ['btlca1', '', '', '', ['Castle A', 'Castle B']],
+                                             ['btlcb1_n', '', '', 'n', ['Castle B']], ['btlzz9', '', '', '', []]])
 
     def test_story_step(self):
         steps = self.c.steps()
@@ -218,10 +228,6 @@ class Catalog(unittest.TestCase):
         SYMS.update({CT.START_BOOK: 0x960, '_ZN6Global11setMinigameEi': 0x964, '_ZN6Global11startCasinoEv': 0x968})
         if key in CT.MINIGAME_CMD: SYMS[CT.MINIGAME_CMD[key][0]] = 0x96c
         e.state.part = ENGINE.PART_TOWN
-        self.assertEqual(self.c.battle_here({'row': '12'}), {'ok': True, 'row': 12})
-        e.run_step_calls()
-        self.assertIn(('Encount::forceBrew', (0x777, 12)), core.calls)
-        self.assertIn('error', self.c.battle_here({'row': 'x'}))
         self.assertEqual(self.c.minigame({'id': 'poker'}), {'ok': True}); e.run_step_calls()
         if key in CT.MINIGAME_CMD:
             (label, args), = [c for c in core.calls if c[0] == CT.MINIGAME_CMD[key][0]]
@@ -234,7 +240,7 @@ class Catalog(unittest.TestCase):
         self.assertIn('error', self.c.set_backdrop({'name': 'town1'}))
         self.c.set_backdrop({'name': ''}); self.assertIsNone(self.g.battle_scenery)
         e.state.part = ENGINE.PART_BATTLE
-        for bad in (self.c.battle_here({'row': '3'}), self.c.minigame({'id': 'poker'}), self.c.open_book()): self.assertIn('error', bad)          # (not from a battle)
+        for bad in (self.c.battle({'row': '3'}), self.c.minigame({'id': 'poker'}), self.c.open_book()): self.assertIn('error', bad)          # (not from a battle)
 
     def test_arenas_and_tnt(self):
         """DQ IV's monster arena (FightStadiumManager: a match, then its fight), DQ VI's slime arena (the scripts' own fight), DQ V's T'n'T (its hall, a ticket given)"""

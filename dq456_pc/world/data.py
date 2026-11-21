@@ -92,6 +92,13 @@ def euler_mat(rx, ry, rz):
     return Ry @ Rz @ Rx
 
 
+def with_time_of(chosen, engine_name):
+    """A battle scenery chosen in the debug panel, at the time of day the engine asks (`engine_name`'s _d / _e / _n / _dk) when both have one; as chosen otherwise
+    (a missing variant: fallback_sceneries)."""
+    a = re.match(r'^(.*)_(dk|d|e|n)$', chosen or ''); b = re.match(r'^(.*)_(dk|d|e|n)$', engine_name or '')
+    return '%s_%s' % (a.group(1), b.group(2)) if a and b else chosen
+
+
 def fallback_sceneries(name_str):
     """Neighboring sceneries of a battle scenery missing from the data. The engine picks the final letter according to the world time (`StageStatus::getBtlMapName`: _d day, _e evening, _n night AND dawn: zone 1 -- 3264 to 127 --
     reuses `_n`, there is no dawn scenery); `param_map_battle.dat` lists each location's sceneries, but `btlcc1` only has _d and _e: without `_n` nothing would be displayed. Dark world with no time-of-day zone:

@@ -42,9 +42,8 @@ pre { background: #101216; padding: 8px; overflow: auto; max-height: 60vh; }
     <h4 id="h_map"></h4><div class="row"><select id="sc_map"></select><button id="sc_go"></button><span class="dim" id="sc_cur"></span></div>
     <div class="row"><select id="sc_world_at"></select><button id="sc_world"></button></div>
     <h4 id="h_step"></h4><div class="row"><select id="sc_step"></select><label><input type="checkbox" id="sc_step_go" checked> <span id="l_step_go"></span></label><button id="sc_apply"></button></div><p class="dim" id="sc_step_note"></p>
-    <h4 id="h_fight"></h4><div class="row"><select id="sc_boss"></select><input id="sc_row" size="6"><button id="sc_fight"></button><span class="dim" id="sc_fight_note"></span></div>
-    <div class="row"><select id="sc_group"></select><button id="sc_here"></button></div>
-    <div class="row"><select id="sc_backdrop"></select><button id="sc_backdrop_go"></button></div>
+    <h4 id="h_fight"></h4><div class="row"><select id="sc_group"></select><select id="sc_backdrop"></select><button id="sc_fight"></button></div>
+    <p class="dim" id="sc_fight_note"></p><div class="row"><button id="sc_backdrop_go"></button><span class="dim" id="sc_backdrop_cur"></span></div>
     <h4 id="h_mini"></h4><div class="row" id="sc_minigames"></div>
     <h4 id="h_items"></h4><div class="row"><input id="sc_item_find" size="16"><select id="sc_item"></select><input id="sc_count" value="1" size="3"><button id="sc_give"></button></div>
     <div class="row"><input id="sc_gold" value="1000" size="9"><button id="sc_gold_go"></button><span class="dim" id="sc_items_note"></span></div>
@@ -87,9 +86,11 @@ const T = {
        port: 'port', type: 'type', cursor: 'curseur', buttons: 'boutons', lines: 'lignes', yes: 'oui', no: 'non', confirm_write: 'Écrire dans la mémoire du moteur ?', loadq: 'Charger cette sauvegarde d\'état ?',
        scenes: 'Scènes', maph: 'Carte', go: 'Y aller', world: 'Carte du monde', world_here: 'devant le lieu actuel', world_n: 'Monde', current: 'carte actuelle', step: 'Étape de l\'histoire', apply: 'Appliquer', step_go: 'aller sur sa carte',
        step_note: 'Remet les interrupteurs globaux et l\'équipe de cette étape ; objets, niveaux et or ne changent pas. Le héros arrive par l\'entrée principale de la carte.',
-       fight: 'Combat', start_fight: 'Lancer le combat', row: 'ligne (vide : celle de l\'endroit)', bosses: 'boss', switches: 'Interrupteurs', on: 'Allumer', off: 'Éteindre',
+       fight: 'Combat', start_fight: 'Lancer le combat ici', bosses: 'Boss', switches: 'Interrupteurs', on: 'Allumer', off: 'Éteindre',
        items: 'Objets et or', give: 'Donner', find: 'chercher…', gold_add: 'Or (négatif : retirer)', items_note: 'Donnés comme un objet trouvé : au premier membre qui a de la place, sinon au sac.',
-       group: 'groupe', fight_here: 'Combattre ce groupe ici', backdrop_own: 'décor de chaque combat', backdrop_go: 'Décor des combats', mini: 'Mini-jeux et livre',
+       groups: 'Groupes', sea: 'mer', backdrop_own: 'décor du lieu', backdrop_go: 'Ce décor pour tous les combats', backdrop_all: 'tous les combats : %s', backdrop_terrains: 'Terrains', backdrop_places: 'Lieux',
+       tr_pl: 'Plaine', tr_mt: 'Montagne', tr_wd: 'Forêt', tr_sd: 'Désert', tr_se: 'Mer', tr_po: 'Marais', tr_sn: 'Neige', tr_is: 'Plage', tr_dk: 'Monde des ténèbres', tr_ds: 'Fond marin',
+       time_d: 'jour', time_e: 'soir', time_n: 'nuit', time_dk: 'monde des ténèbres', unknown_place: 'lieu inconnu', mini: 'Mini-jeux et livre',
        mg_poker: 'Poker', mg_slots: 'Machines à sous', mg_slime_race: 'Course de gluants', mg_slime_touch: 'Gluant à gogo', mg_curling: 'Curling de gluants', mg_monster_arena: 'Arène des monstres', mg_slime_arena: 'Arène des gluants', mg_tnt: 'Jeu TNT (salle, avec un ticket)', book: 'Livre des monstres',
        texts: 'Textes', tx_show: 'Afficher dans le jeu', tx_n: 'messages à la suite', tx_count: '%s messages',
        tx_note: 'Le message s\'ouvre dans la vraie fenêtre du jeu, là où est le héros (ville, donjon ou carte du monde), comme un script l\'affiche ; on le tourne et le ferme comme d\'habitude. Numéro du message ou clé bXXXXXXX.mpt#N.',
@@ -102,7 +103,7 @@ const T = {
        party: 'Équipe', members: 'Membres', level: 'Niveau', exp: 'Expérience', set: 'Mettre', remove: 'Retirer', join: 'Ajouter à l\'équipe', values: 'Argent et temps de jeu',
        v_gold: 'Or', v_bank: 'Banque', v_coins: 'Jetons de casino', v_medals: 'Mini-médailles', v_play_time: 'Temps de jeu (h:mm:ss)', allitems: 'Objets', items_btn: 'Tous les objets × 99 dans le sac',
        items_note: 'Tous les objets du jeu, y compris ceux que le jeu réserve au débogage.',
-       sw_global: 'globaux', sw_area: 'de la zone', sw_local: 'de la carte', sw_note: 'Cliquer un numéro l\'éteint.', fight_note: 'Un boss se lance chez lui (sa carte d\'abord), avec son décor, depuis n\'importe où. Les autres combats : seulement là où le jeu permet les combats aléatoires à ce moment (jamais en ville, ni quand l\'histoire les coupe).'},
+       sw_global: 'globaux', sw_area: 'de la zone', sw_local: 'de la carte', sw_note: 'Cliquer un numéro l\'éteint.', fight_note: 'Tout combat se lance d\'ici, sans voyager (ville, donjon ou carte du monde). Un boss garde le décor de son lieu, sauf si un autre est choisi ; un groupe qu\'on ne rencontre qu\'en mer se bat devant la mer ; les autres devant le décor choisi, ou celui du lieu. L\'heure du lieu donne la variante (jour, soir, nuit).'},
   en: {state: 'State', packets: 'Packets', menus: 'Menus', objects: 'Objects', memory: 'Memory', states: 'Savestates',
        pause: 'Pause (F3)', resume: 'Resume (F3)', report: 'Bug report (F8)', follow: 'follow', read: 'Read', write: 'Write', log: 'Engine log',
        save: 'Save', load: 'Load', empty: 'empty', paused: 'PAUSED', replay: 'REPLAY', frame: 'frame', part: 'part', map: 'map', flags: 'flags',
@@ -110,9 +111,11 @@ const T = {
        port: 'port', type: 'type', cursor: 'cursor', buttons: 'buttons', lines: 'lines', yes: 'yes', no: 'no', confirm_write: 'Write into the engine\'s memory?', loadq: 'Load this savestate?',
        scenes: 'Scenes', maph: 'Map', go: 'Go', world: 'World map', world_here: 'in front of the current place', world_n: 'World', current: 'current map', step: 'Story step', apply: 'Apply', step_go: 'go to its map',
        step_note: 'Puts back the global switches and the party of that step; items, levels and gold do not change. The hero arrives through the map\'s main entrance.',
-       fight: 'Fight', start_fight: 'Start the fight', row: 'row (empty: the place\'s)', bosses: 'bosses', switches: 'Switches', on: 'On', off: 'Off',
+       fight: 'Fight', start_fight: 'Start the fight here', bosses: 'Bosses', switches: 'Switches', on: 'On', off: 'Off',
        items: 'Items and gold', give: 'Give', find: 'search…', gold_add: 'Gold (negative: take)', items_note: 'Given as a found item: to the first member with room, otherwise the bag.',
-       group: 'group', fight_here: 'Fight this group here', backdrop_own: 'each fight\'s own backdrop', backdrop_go: 'Battle backdrop', mini: 'Mini-games and book',
+       groups: 'Groups', sea: 'sea', backdrop_own: 'the place\'s backdrop', backdrop_go: 'This backdrop for every fight', backdrop_all: 'every fight: %s', backdrop_terrains: 'Terrains', backdrop_places: 'Places',
+       tr_pl: 'Plains', tr_mt: 'Mountains', tr_wd: 'Forest', tr_sd: 'Desert', tr_se: 'Sea', tr_po: 'Swamp', tr_sn: 'Snow', tr_is: 'Beach', tr_dk: 'Dark world', tr_ds: 'Sea floor',
+       time_d: 'day', time_e: 'evening', time_n: 'night', time_dk: 'dark world', unknown_place: 'unknown place', mini: 'Mini-games and book',
        mg_poker: 'Poker', mg_slots: 'Slot machines', mg_slime_race: 'Slime race', mg_slime_touch: 'Slime touch', mg_curling: 'Slime curling', mg_monster_arena: 'Monster arena', mg_slime_arena: 'Slime arena', mg_tnt: 'T\'n\'T (its hall, with a ticket)', book: 'Monster book',
        texts: 'Texts', tx_show: 'Show in the game', tx_n: 'messages in a row', tx_count: '%s messages',
        tx_note: 'The message opens in the game\'s real window, where the hero is (town, dungeon or world map), as a script shows it; turn and close it as usual. Message number or key bXXXXXXX.mpt#N.',
@@ -125,7 +128,7 @@ const T = {
        party: 'Party', members: 'Members', level: 'Level', exp: 'Experience', set: 'Set', remove: 'Remove', join: 'Add to the party', values: 'Money and play time',
        v_gold: 'Gold', v_bank: 'Bank', v_coins: 'Casino tokens', v_medals: 'Mini medals', v_play_time: 'Play time (h:mm:ss)', allitems: 'Items', items_btn: 'Every item × 99 in the bag',
        items_note: 'Every item of the game, those the game keeps for debugging included.',
-       sw_global: 'global', sw_area: 'area', sw_local: 'map', sw_note: 'Click a number to turn it off.', fight_note: 'A boss is fought at its own place (its map first), with its backdrop, from anywhere. Other fights: only where the game allows random encounters at that moment (never in a town, nor when the story switches them off).'}};
+       sw_global: 'global', sw_area: 'area', sw_local: 'map', sw_note: 'Click a number to turn it off.', fight_note: 'Any fight starts from here, without travelling (town, dungeon or world map). A boss keeps its own place\'s backdrop unless another is chosen; a group only met at sea fights before the sea; the others before the chosen backdrop, or the place\'s. The place\'s time of day gives the variant (day, evening, night).'}};
 let L = T.en, lang = null, tab = 't_state', last = null, pkSince = -1, pkRows = [];
 const $ = id => document.getElementById(id);
 const TABS = ['state', 'scenes', 'party', 'book', 'texts', 'packets', 'menus', 'objects', 'memory', 'states'];
@@ -136,14 +139,14 @@ function texts() {
   $('tabs').innerHTML = TABS.map(t => `<a data-t="t_${t}" class="${'t_' + t === tab ? 'sel' : ''}">${L[t]}</a>`).join('');
   for (const a of document.querySelectorAll('nav a')) a.onclick = () => { tab = a.dataset.t; texts(); show(); refresh(); };
   for (const [id, k] of [['h_map', 'maph'], ['sc_go', 'go'], ['sc_world', 'world'], ['h_step', 'step'], ['l_step_go', 'step_go'], ['sc_apply', 'apply'], ['sc_step_note', 'step_note'],
-    ['sc_here', 'fight_here'], ['sc_backdrop_go', 'backdrop_go'], ['h_mini', 'mini'],
+    ['sc_backdrop_go', 'backdrop_go'], ['h_mini', 'mini'],
     ['tx_show', 'tx_show'], ['l_tx_n', 'tx_n'], ['tx_note', 'tx_note'],
     ['bk_all', 'bk_all'], ['bk_none', 'bk_none'], ['bk_note', 'bk_note'],
     ['h_extras', 'extras'], ['h_jobs', 'jobs'],
     ['h_members', 'members'], ['pa_join', 'join'], ['h_values', 'values'], ['h_allitems', 'allitems'], ['pa_items', 'items_btn'], ['pa_items_note', 'items_note'],
     ['h_items', 'items'], ['sc_give', 'give'], ['sc_gold_go', 'gold_add'], ['sc_items_note', 'items_note'],
     ['h_fight', 'fight'], ['sc_fight', 'start_fight'], ['sc_fight_note', 'fight_note'], ['h_sw', 'switches'], ['sc_sw_note', 'sw_note'], ['sc_on', 'on'], ['sc_off', 'off']]) $(id).textContent = L[k];
-  $('sc_set').innerHTML = ['global', 'area', 'local'].map(k => `<option value="${k}">${L['sw_' + k]}</option>`).join(''); $('sc_row').placeholder = L.row; $('sc_item_find').placeholder = L.find; $('bk_find').placeholder = L.find; $('tx_find').placeholder = L.find;
+  $('sc_set').innerHTML = ['global', 'area', 'local'].map(k => `<option value="${k}">${L['sw_' + k]}</option>`).join(''); $('sc_item_find').placeholder = L.find; $('bk_find').placeholder = L.find; $('tx_find').placeholder = L.find;
   $('b_report').textContent = L.report; $('l_follow').textContent = L.follow; $('mem_read').textContent = L.read; $('mem_write').textContent = L.write; $('h_log').textContent = L.log;
 }
 function show() { for (const s of document.querySelectorAll('section')) s.classList.toggle('sel', s.id === tab); }
@@ -199,22 +202,30 @@ async function refreshStates() {
 let catalog = null;
 async function loadCatalog() {
   catalog = await get('/api/catalog');
-  const placeName = {}; for (const [n, name, map] of catalog.steps) if (map && name && !(map in placeName)) placeName[map] = name;          // a map's label: the first story step that goes there
+  const placeName = Object.assign({}, catalog.places || {});          // a map's label: its place (the one it leads out to on the world map), else its first story step's
   $('sc_map').innerHTML = catalog.maps.map(m => `<option value="${m}">${m}${placeName[m] ? ' — ' + esc(placeName[m]) : ''}</option>`).join('');
   if (catalog.map && catalog.maps.includes(catalog.map)) $('sc_map').value = catalog.map;
   $('sc_world_at').innerHTML = `<option value="">${esc(L.world_here)}</option>` + (catalog.worlds || []).map(([t, places]) =>          // each world map of the game, the places on it
     `<optgroup label="${esc(L.world_n)} ${t + 1}">` + places.map(([k, p, m]) => `<option value="${k}">${esc(p)} (${esc(m)})</option>`).join('') + '</optgroup>').join('');
   renderItems();
-  $('sc_group').innerHTML = (catalog.encounters || []).map(([row, mons]) => `<option value="${row}">${row} — ${esc(mons.join(', '))}</option>`).join('');
-  $('sc_backdrop').innerHTML = `<option value="">${L.backdrop_own}</option>` + (catalog.backdrops || []).map(n => `<option value="${n}">${n}</option>`).join('');
-  $('sc_backdrop').value = catalog.backdrop || '';
+  const sea = new Set(catalog.sea_rows || []);
+  $('sc_group').innerHTML = `<optgroup label="${L.bosses}">` + catalog.bosses.map(([row, mons, map]) => `<option value="${row}">${esc(mons.join(', '))} — ${row}${map ? ' — ' + esc(placeName[map] || map) : ''}</option>`).join('') + '</optgroup>' +
+    `<optgroup label="${L.groups}">` + (catalog.encounters || []).map(([row, mons]) => `<option value="${row}">${row} — ${esc(mons.join(', '))}${sea.has(row) ? ' (' + L.sea + ')' : ''}</option>`).join('') + '</optgroup>';
+  const bd = catalog.backdrops || [], opt = b => `<option value="${b[0]}">${esc(backdropLabel(b))} (${b[0]})</option>`;
+  $('sc_backdrop').innerHTML = `<option value="">${L.backdrop_own}</option><optgroup label="${L.backdrop_terrains}">` + bd.filter(b => b[1]).map(opt).join('') +
+    `</optgroup><optgroup label="${L.backdrop_places}">` + bd.filter(b => !b[1]).map(opt).join('') + '</optgroup>';
+  backdropLabel.byName = Object.fromEntries(bd.map(b => [b[0], b])); $('sc_group').onchange(); showBackdrop(catalog.backdrop);
   $('sc_minigames').innerHTML = (catalog.minigames || []).map(m => `<button data-mg="${m}">${L['mg_' + m] || m}</button>`).join('') + `<button id="sc_book">${L.book}</button>`;
   for (const b of document.querySelectorAll('[data-mg]')) b.onclick = () => cmd({cmd: 'minigame', id: b.dataset.mg});
   $('sc_book').onclick = () => cmd({cmd: 'book'});
   $('sc_step').innerHTML = catalog.steps.map(([n, name, map]) => `<option value="${n}">${n}${name ? ' — ' + esc(name) : ''}${map ? ' — ' + map : ''}</option>`).join('');
-  $('sc_boss').innerHTML = `<option value="">${L.bosses}…</option>` + catalog.bosses.map(([row, mons, map]) => `<option value="${row}">${esc(mons.join(', '))} — ${row}${map ? ' — ' + map : ''}</option>`).join('');
   renderFlags(catalog);
 }
+function backdropLabel(b) {          // [name, terrain, number, time, places] -> "Plaine — nuit", "Château de X, Tour Y — jour"
+  const [n, t, num, time, places] = b; const what = t ? (L['tr_' + t] || t) + (num ? ' ' + num : '') : (places.length ? places.join(', ') : L.unknown_place);
+  return what + (time ? ' — ' + (L['time_' + time] || time) : '');
+}
+function showBackdrop(n) { const b = n && backdropLabel.byName && backdropLabel.byName[n]; $('sc_backdrop_cur').textContent = n ? L.backdrop_all.replace('%s', b ? backdropLabel(b) + ' (' + n + ')' : n) : ''; }
 function renderItems() {
   const f = $('sc_item_find').value.trim().toLowerCase(), keep = $('sc_item').value;
   $('sc_item').innerHTML = (catalog.items || []).filter(([n, name]) => !f || name.toLowerCase().includes(f) || String(n) === f).map(([n, name]) => `<option value="${n}">${esc(name)} — ${n}</option>`).join('');
@@ -229,14 +240,13 @@ function renderFlags(c) {
 async function refreshScenes() { if (!catalog) return loadCatalog(); renderFlags(await get('/api/catalog?only=flags')); }
 $('sc_go').onclick = () => cmd({cmd: 'goto_map', map: $('sc_map').value});
 $('sc_world').onclick = () => cmd({cmd: 'goto_world', symbol: $('sc_world_at').value});
-$('sc_here').onclick = () => cmd({cmd: 'battle_here', row: $('sc_group').value});
-$('sc_backdrop_go').onclick = () => cmd({cmd: 'backdrop', name: $('sc_backdrop').value});
+$('sc_group').onchange = () => { const s = new Set((catalog && catalog.sea_rows) || []), atSea = s.has(+$('sc_group').value); $('sc_backdrop').disabled = atSea; if (atSea) $('sc_backdrop').value = 'btl_se_d'; };
+$('sc_fight').onclick = () => cmd({cmd: 'battle', row: $('sc_group').value, backdrop: $('sc_backdrop').disabled ? '' : $('sc_backdrop').value});
+$('sc_backdrop_go').onclick = () => cmd({cmd: 'backdrop', name: $('sc_backdrop').value}).then(r => { if (!r.error) showBackdrop($('sc_backdrop').value); });
 $('sc_item_find').oninput = renderItems;
 $('sc_give').onclick = () => cmd({cmd: 'give_item', item: +$('sc_item').value, count: +$('sc_count').value || 1});
 $('sc_gold_go').onclick = () => cmd({cmd: 'gold', amount: $('sc_gold').value.trim()});
 $('sc_apply').onclick = () => cmd({cmd: 'story_step', step: +$('sc_step').value, go: $('sc_step_go').checked}).then(refreshScenes);
-$('sc_boss').onchange = () => { $('sc_row').value = $('sc_boss').value; };
-$('sc_fight').onclick = () => cmd({cmd: 'battle', row: $('sc_row').value.trim()});
 $('sc_on').onclick = () => cmd({cmd: 'flag', set: $('sc_set').value, n: +$('sc_n').value, on: true}).then(refreshScenes);
 $('sc_off').onclick = () => cmd({cmd: 'flag', set: $('sc_set').value, n: +$('sc_n').value, on: false}).then(refreshScenes);
 let party = null, partyKey = '';

@@ -369,7 +369,8 @@ class FieldMixin:
             for t in (self.ext_sky.get('var') or ()): t.delete()
         self.ext_sky = None; self.zoom_sky = None; self.flat_sky = None; self.ext_map = []; self.map_vl = []; self.map_pos = {}; self.spans = {}; self.names = {}; self.objects = None; self.palettes = None; self.map_background = None; self.pam_gl = {}; self.map_transz = frozenset()
         src = (os.environ.get('DQ_SCENERY') or name_str) if name_str.startswith('btl_') else name_str       # DQ_SCENERY: (test) forces another battle scenery
-        if name_str.startswith('btl') and getattr(self, 'battle_scenery', None): src = self.battle_scenery          # (debug panel: the backdrop chosen for the fights, drawing only: the engine's battle is unchanged)
+        chosen = (getattr(self, 'fight_scenery', None) or getattr(self, 'battle_scenery', None)) if name_str.startswith('btl') else None
+        if chosen: src = DO.with_time_of(chosen, name_str)          # (debug panel: the backdrop chosen for a fight or for all of them, drawing only: the engine's battle is unchanged; the engine's time of day)
         c = error = None
         for cand in [src] + (DO.fallback_sceneries(src) if name_str.startswith('btl') else []):         # battle scenery without the requested variant (time of day): the closest one, rather than an empty scenery
             try: c = self.data.game_map(cand)
