@@ -613,6 +613,13 @@
   {"key": "debug.book_in", "en": "monster book: %s added", "text": "libro de monstruos: %s añadido"},
   {"key": "debug.book_out", "en": "monster book: %s removed", "text": "libro de monstruos: %s quitado"},
   {"key": "debug.book_all_in", "en": "monster book: complete", "text": "libro de monstruos: completo"},
-  {"key": "debug.book_all_out", "en": "monster book: emptied", "text": "libro de monstruos: vaciado"}
+  {"key": "debug.book_all_out", "en": "monster book: emptied", "text": "libro de monstruos: vaciado"},
+  {"key": "debug.extra_set", "en": "%s: %s", "text": "%s: %s"},
+  {"key": "debug.extra_job", "en": "character %d: vocation %d at level %d", "text": "personaje %d: vocación %d al nivel %d"},
+  {"key": "debug.texts_file_bad", "en": "no such message file: %s", "text": "no existe ese archivo de mensajes: %s"},
+  {"key": "debug.texts_bad", "en": "not a message: %s", "text": "no es un mensaje: %s"},
+  {"key": "debug.texts_not_here", "en": "messages are shown in a town, a dungeon or on the world map only", "text": "los mensajes solo se muestran en un pueblo, una mazmorra o el mapa del mundo"},
+  {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "ya se muestra un mensaje: ciérralo primero"},
+  {"key": "debug.texts_shown", "en": "message %d shown", "text": "mensaje %d mostrado"}
  ]
 }

@@ -236,6 +236,20 @@ class Catalog(unittest.TestCase):
         e.state.part = ENGINE.PART_BATTLE
         for bad in (self.c.battle_here({'row': '3'}), self.c.minigame({'id': 'poker'}), self.c.open_book()): self.assertIn('error', bad)          # (not from a battle)
 
+    def test_arenas_and_tnt(self):
+        """DQ IV's monster arena (FightStadiumManager: a match, then its fight), DQ VI's slime arena (the scripts' own fight), DQ V's T'n'T (its hall, a ticket given)"""
+        e = self.g.engine; core = e.core; e.state.part = ENGINE.PART_FIELD; e._global = lambda: 0x880
+        SYMS.update({CT.STADIUM[0]: 0x970, CT.STADIUM[1]: 0x974, CT.STADIUM[2]: 0x978, '_ZN6script19cmdBattleSlimeArenaEv': 0x97c})
+        self.c.key = 'dq4'; self.assertEqual(self.c.minigame({'id': 'monster_arena'}), {'ok': True}); e.run_step_calls()
+        self.assertEqual([c[0] for c in core.calls[-3:]], list(CT.STADIUM)); self.assertEqual(core.calls[-1][1], (0x777,))          # (on the manager getSingleton gave)
+        self.c.key = 'dq6'; self.assertEqual(self.c.minigame({'id': 'slime_arena'}), {'ok': True}); e.run_step_calls()
+        self.assertEqual(core.calls[-1], ('_ZN6script19cmdBattleSlimeArenaEv', ()))
+        self.c.key = 'dq5'; given = []; entered = []
+        self.c.give_item = lambda c: given.append(c); self.c.start_town = lambda m: entered.append(m)
+        self.assertEqual(self.c.minigame({'id': 'tnt'}), {'ok': True}); e.run_step_calls()
+        self.assertEqual((given, entered), ([{'item': 178, 'count': 1}], ['mdc1b1']))
+        self.assertIn('error', self.c.minigame({'id': 'monster_arena'}))                                                    # (not a DQ V game)
+
     def test_panel_commands_registered(self):
         for k in ('goto_map', 'goto_world', 'story_step', 'flag', 'battle', 'give_item', 'gold', 'battle_here', 'minigame', 'book', 'backdrop'): self.assertIn(k, self.d.panel_commands)
         self.assertIn('/api/catalog', self.d.panel_pages)

@@ -55,10 +55,19 @@ pre { background: #101216; padding: 8px; overflow: auto; max-height: 60vh; }
     <div class="row"><select id="pa_char"></select><button id="pa_join"></button></div>
     <h4 id="h_values"></h4><div id="pa_values" class="grid"></div>
     <h4 id="h_allitems"></h4><div class="row"><button id="pa_items"></button><span class="dim" id="pa_items_note"></span></div>
+    <h4 id="h_extras"></h4><div id="pa_extras"></div>
+    <h4 id="h_jobs"></h4><div id="pa_jobs"></div>
   </section>
   <section id="t_book">
     <div class="row"><button id="bk_all"></button><button id="bk_none"></button><input id="bk_find" size="18"><span class="dim" id="bk_count"></span></div>
     <p class="dim" id="bk_note"></p><div id="bk_pages"></div>
+  </section>
+  <section id="t_texts">
+    <div class="row"><select id="tx_file"></select><input id="tx_find" size="18"><span class="dim" id="tx_count"></span></div>
+    <select id="tx_list" size="16" style="width:100%"></select>
+    <div class="row"><input id="tx_num" size="22"><label><span id="l_tx_n"></span> <input id="tx_n" value="1" size="3"></label>
+      <button id="tx_prev">◀</button><button id="tx_show"></button><button id="tx_next">▶</button></div>
+    <p class="dim" id="tx_note"></p>
   </section>
   <section id="t_packets"><div class="row"><label><input type="checkbox" id="pk_follow" checked> <span id="l_follow"></span></label>
     <input id="pk_filter" placeholder="types: 22 28 / !22 !28 !29" size="28"><span class="dim" id="pk_count"></span></div><pre id="packets"></pre></section>
@@ -81,9 +90,14 @@ const T = {
        fight: 'Combat', start_fight: 'Lancer le combat', row: 'ligne (vide : celle de l\'endroit)', bosses: 'boss', switches: 'Interrupteurs', on: 'Allumer', off: 'Éteindre',
        items: 'Objets et or', give: 'Donner', find: 'chercher…', gold_add: 'Or (négatif : retirer)', items_note: 'Donnés comme un objet trouvé : au premier membre qui a de la place, sinon au sac.',
        group: 'groupe', fight_here: 'Combattre ce groupe ici', backdrop_own: 'décor de chaque combat', backdrop_go: 'Décor des combats', mini: 'Mini-jeux et livre',
-       mg_poker: 'Poker', mg_slots: 'Machines à sous', mg_slime_race: 'Course de gluants', mg_slime_touch: 'Jeu des gluants (tactile)', mg_curling: 'Curling de gluants', book: 'Livre des monstres',
-       book: 'Livre', bk_all: 'Tout le livre à 100 %', bk_none: 'Vider le livre', bk_seen: 'dans le livre', bk_defeated: 'vaincus', bk_items: 'objet obtenu',
+       mg_poker: 'Poker', mg_slots: 'Machines à sous', mg_slime_race: 'Course de gluants', mg_slime_touch: 'Gluant à gogo', mg_curling: 'Curling de gluants', mg_monster_arena: 'Arène des monstres', mg_slime_arena: 'Arène des gluants', mg_tnt: 'Jeu TNT (salle, avec un ticket)', book: 'Livre des monstres',
+       texts: 'Textes', tx_show: 'Afficher dans le jeu', tx_n: 'messages à la suite', tx_count: '%s messages',
+       tx_note: 'Le message s\'ouvre dans la vraie fenêtre du jeu, là où est le héros (ville, donjon ou carte du monde), comme un script l\'affiche ; on le tourne et le ferme comme d\'habitude. Numéro du message ou clé bXXXXXXX.mpt#N.',
+       bk_all: 'Tout le livre à 100 %', bk_none: 'Vider le livre', bk_seen: 'dans le livre', bk_defeated: 'vaincus', bk_items: 'objet obtenu',
        bk_note: 'Cocher met le monstre dans le livre (vaincu une fois et son objet obtenu une fois s\'il n\'y était pas) ; décocher le retire.', bk_count: '%s / %s pages',
+       extras: 'Activités annexes', jobs: 'Vocations (niveau 0 à 8)', course: 'Piste', place: 'Place',
+       ex_contest: 'Concours de style : rang (1 à 8)', ex_arena: 'Arène des gluants : rangs gagnés (0 à 8)', ex_curling_open: 'Curling : pistes ouvertes',
+       ex_curling_best: 'Curling : meilleur score', ex_touch: 'Gluant à gogo : classement',
        party: 'Équipe', members: 'Membres', level: 'Niveau', exp: 'Expérience', set: 'Mettre', remove: 'Retirer', join: 'Ajouter à l\'équipe', values: 'Argent et temps de jeu',
        v_gold: 'Or', v_bank: 'Banque', v_coins: 'Jetons de casino', v_medals: 'Mini-médailles', v_play_time: 'Temps de jeu (h:mm:ss)', allitems: 'Objets', items_btn: 'Tous les objets × 99 dans le sac',
        items_note: 'Tous les objets du jeu, y compris ceux que le jeu réserve au débogage.',
@@ -98,16 +112,21 @@ const T = {
        fight: 'Fight', start_fight: 'Start the fight', row: 'row (empty: the place\'s)', bosses: 'bosses', switches: 'Switches', on: 'On', off: 'Off',
        items: 'Items and gold', give: 'Give', find: 'search…', gold_add: 'Gold (negative: take)', items_note: 'Given as a found item: to the first member with room, otherwise the bag.',
        group: 'group', fight_here: 'Fight this group here', backdrop_own: 'each fight\'s own backdrop', backdrop_go: 'Battle backdrop', mini: 'Mini-games and book',
-       mg_poker: 'Poker', mg_slots: 'Slot machines', mg_slime_race: 'Slime race', mg_slime_touch: 'Slime touch', mg_curling: 'Slime curling', book: 'Monster book',
-       book: 'Book', bk_all: 'Whole book at 100 %', bk_none: 'Empty the book', bk_seen: 'in the book', bk_defeated: 'defeated', bk_items: 'item obtained',
+       mg_poker: 'Poker', mg_slots: 'Slot machines', mg_slime_race: 'Slime race', mg_slime_touch: 'Slime touch', mg_curling: 'Slime curling', mg_monster_arena: 'Monster arena', mg_slime_arena: 'Slime arena', mg_tnt: 'T\'n\'T (its hall, with a ticket)', book: 'Monster book',
+       texts: 'Texts', tx_show: 'Show in the game', tx_n: 'messages in a row', tx_count: '%s messages',
+       tx_note: 'The message opens in the game\'s real window, where the hero is (town, dungeon or world map), as a script shows it; turn and close it as usual. Message number or key bXXXXXXX.mpt#N.',
+       bk_all: 'Whole book at 100 %', bk_none: 'Empty the book', bk_seen: 'in the book', bk_defeated: 'defeated', bk_items: 'item obtained',
        bk_note: 'Ticking puts the monster in the book (defeated once and its item obtained once if it was not there); unticking takes it out.', bk_count: '%s / %s pages',
+       extras: 'Side activities', jobs: 'Vocations (level 0 to 8)', course: 'Course', place: 'Place',
+       ex_contest: 'Fashion contest: rank (1 to 8)', ex_arena: 'Slime arena: ranks won (0 to 8)', ex_curling_open: 'Slime curling: courses open',
+       ex_curling_best: 'Slime curling: best score', ex_touch: 'Slime Touch: ranking',
        party: 'Party', members: 'Members', level: 'Level', exp: 'Experience', set: 'Set', remove: 'Remove', join: 'Add to the party', values: 'Money and play time',
        v_gold: 'Gold', v_bank: 'Bank', v_coins: 'Casino tokens', v_medals: 'Mini medals', v_play_time: 'Play time (h:mm:ss)', allitems: 'Items', items_btn: 'Every item × 99 in the bag',
        items_note: 'Every item of the game, those the game keeps for debugging included.',
        sw_global: 'global', sw_area: 'area', sw_local: 'map', sw_note: 'Click a number to turn it off.', fight_note: 'A boss is fought at its own place (its map first), with its backdrop, from anywhere. Other fights: only where the game allows random encounters at that moment (never in a town, nor when the story switches them off).'}};
 let L = T.en, lang = null, tab = 't_state', last = null, pkSince = -1, pkRows = [];
 const $ = id => document.getElementById(id);
-const TABS = ['state', 'scenes', 'party', 'book', 'packets', 'menus', 'objects', 'memory', 'states'];
+const TABS = ['state', 'scenes', 'party', 'book', 'texts', 'packets', 'menus', 'objects', 'memory', 'states'];
 const esc = s => String(s).replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
 async function get(path) { const r = await fetch(path); return r.json(); }
 async function cmd(c) { const r = await fetch('/api/cmd', {method: 'POST', body: JSON.stringify(c)}); const j = await r.json(); if (j.error) $('msg').textContent = j.error; return j; }
@@ -116,11 +135,13 @@ function texts() {
   for (const a of document.querySelectorAll('nav a')) a.onclick = () => { tab = a.dataset.t; texts(); show(); refresh(); };
   for (const [id, k] of [['h_map', 'maph'], ['sc_go', 'go'], ['sc_world', 'world'], ['h_step', 'step'], ['l_step_go', 'step_go'], ['sc_apply', 'apply'], ['sc_step_note', 'step_note'],
     ['sc_here', 'fight_here'], ['sc_backdrop_go', 'backdrop_go'], ['h_mini', 'mini'],
+    ['tx_show', 'tx_show'], ['l_tx_n', 'tx_n'], ['tx_note', 'tx_note'],
     ['bk_all', 'bk_all'], ['bk_none', 'bk_none'], ['bk_note', 'bk_note'],
+    ['h_extras', 'extras'], ['h_jobs', 'jobs'],
     ['h_members', 'members'], ['pa_join', 'join'], ['h_values', 'values'], ['h_allitems', 'allitems'], ['pa_items', 'items_btn'], ['pa_items_note', 'items_note'],
     ['h_items', 'items'], ['sc_give', 'give'], ['sc_gold_go', 'gold_add'], ['sc_items_note', 'items_note'],
     ['h_fight', 'fight'], ['sc_fight', 'start_fight'], ['sc_fight_note', 'fight_note'], ['h_sw', 'switches'], ['sc_sw_note', 'sw_note'], ['sc_on', 'on'], ['sc_off', 'off']]) $(id).textContent = L[k];
-  $('sc_set').innerHTML = ['global', 'area', 'local'].map(k => `<option value="${k}">${L['sw_' + k]}</option>`).join(''); $('sc_row').placeholder = L.row; $('sc_item_find').placeholder = L.find; $('bk_find').placeholder = L.find;
+  $('sc_set').innerHTML = ['global', 'area', 'local'].map(k => `<option value="${k}">${L['sw_' + k]}</option>`).join(''); $('sc_row').placeholder = L.row; $('sc_item_find').placeholder = L.find; $('bk_find').placeholder = L.find; $('tx_find').placeholder = L.find;
   $('b_report').textContent = L.report; $('l_follow').textContent = L.follow; $('mem_read').textContent = L.read; $('mem_write').textContent = L.write; $('h_log').textContent = L.log;
 }
 function show() { for (const s of document.querySelectorAll('section')) s.classList.toggle('sel', s.id === tab); }
@@ -228,6 +249,7 @@ const hms = t => { const s = Math.floor(t / 60); return `${Math.floor(s / 3600)}
 const unhms = v => { const p = String(v).trim().split(':').map(Number); if (p.some(isNaN)) return NaN; let s = 0; for (const x of p) s = s * 60 + x; return Math.round(s * 60); };
 async function refreshParty(force) {
   if (!force && document.activeElement && $('t_party').contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;          // (not while a field is being typed in)
+  refreshExtras(force);
   const p = await get('/api/party'); const key = JSON.stringify(p); if (!force && key === partyKey) return; partyKey = key; party = p;
   $('pa_members').innerHTML = `<table><tr><th></th><th>${L.level}</th><th></th><th>${L.exp}</th><th></th><th></th></tr>` + p.members.map(m =>
     `<tr><td>${esc(m.name)} <span class="dim">#${m.id}</span></td><td><input size="3" id="pl_${m.id}" value="${m.level}"></td><td><button data-lv="${m.id}">${L.set}</button></td>` +
@@ -240,6 +262,21 @@ async function refreshParty(force) {
   act('[data-xp]', b => cmd({cmd: 'party_exp', id: +b.dataset.xp, exp: +$('px_' + b.dataset.xp).value}));
   act('[data-out]', b => cmd({cmd: 'party_quit', id: +b.dataset.out}));
   act('[data-val]', b => { const k = b.dataset.val, v = $('pv_' + k).value; return cmd({cmd: 'value', key: k, value: k === 'play_time' || k === 'stat:AdventureTime' ? unhms(v) : +v}); });
+}
+let extrasKey = '';
+async function refreshExtras(force) {
+  const x = await get('/api/extras'); if (x.error) return; const key = JSON.stringify(x); if (!force && key === extrasKey) return; extrasKey = key;
+  const box = (s, i, v, label) => s.kind === 'bits' ? `<label class="row" style="margin:0 8px 0 0"><input type="checkbox" data-ex="${s.id}" data-i="${i}"${v ? ' checked' : ''}> ${label}</label>`
+    : `<span class="row" style="margin:0 8px 0 0">${label} <input size="6" id="ex_${s.id}_${i}" value="${v}"><button data-exset="${s.id}" data-i="${i}">${L.set}</button></span>`;
+  $('h_extras').style.display = x.systems.length ? '' : 'none';
+  $('pa_extras').innerHTML = x.systems.map(s => `<div class="row"><span class="dim">${esc(L['ex_' + s.id] || s.id)}</span> ` +
+    (s.kind === 'number' ? box(s, 0, s.value, '') : s.items.map(([i, v]) => box(s, i, v, `${s.id === 'touch' ? L.place : L.course} ${i + 1}`)).join('')) + '</div>').join('');
+  $('h_jobs').style.display = x.jobs ? '' : 'none';
+  $('pa_jobs').innerHTML = x.jobs ? `<table><tr><th></th>${x.jobs.jobs.map(([j, n]) => `<th title="${esc(n)}">${esc(n.slice(0, 7))}</th>`).join('')}</tr>` + x.jobs.members.map(m =>
+    `<tr><td>${esc(m.name)}</td>${m.levels.map((lv, k) => `<td><input size="1" data-job="${k + 1}" data-m="${m.id}" value="${lv}"></td>`).join('')}</tr>`).join('') + '</table>' : '';
+  for (const c of document.querySelectorAll('[data-ex]')) c.onchange = () => cmd({cmd: 'extra_set', id: c.dataset.ex, i: +c.dataset.i, value: c.checked ? 1 : 0}).then(() => refreshExtras(true));
+  for (const b of document.querySelectorAll('[data-exset]')) b.onclick = () => cmd({cmd: 'extra_set', id: b.dataset.exset, i: +b.dataset.i, value: +$(`ex_${b.dataset.exset}_${b.dataset.i}`).value}).then(() => refreshExtras(true));
+  for (const c of document.querySelectorAll('[data-job]')) c.onchange = () => cmd({cmd: 'job_level', id: +c.dataset.m, job: +c.dataset.job, level: +c.value}).then(() => refreshExtras(true));
 }
 $('pa_join').onclick = () => cmd({cmd: 'party_join', id: +$('pa_char').value}).then(() => setTimeout(() => refreshParty(true), 300));
 $('pa_items').onclick = () => cmd({cmd: 'items_max'});
@@ -256,7 +293,37 @@ async function refreshBook(force) {
 $('bk_all').onclick = () => cmd({cmd: 'book_all', on: true}).then(() => refreshBook(true));
 $('bk_none').onclick = () => { if (confirm(L.bk_none + ' ?')) cmd({cmd: 'book_all', on: false}).then(() => refreshBook(true)); };
 $('bk_find').oninput = () => refreshBook(true);
-const PAGES = {t_book: refreshBook, t_party: refreshParty, t_scenes: refreshScenes, t_packets: refreshPackets, t_menus: refreshMenus, t_objects: refreshObjects, t_states: refreshStates};
+let txFiles = null, txFile = null;
+async function refreshTexts() {
+  if (txFiles) return;
+  const r = await get('/api/texts'); if (r.error) { $('msg').textContent = r.error; return; } txFiles = r.files;
+  $('tx_file').innerHTML = txFiles.map(([f, first, n]) => `<option value="${f}">${f} — ${n}</option>`).join('');
+  await loadTextFile($('tx_file').value);
+}
+async function loadTextFile(name) {
+  txFile = await get('/api/texts?file=' + encodeURIComponent(name)); if (txFile.error) { $('msg').textContent = txFile.error; return; }
+  renderTexts();
+}
+function renderTexts() {
+  if (!txFile || !txFile.entries) return;
+  const f = $('tx_find').value.trim().toLowerCase();
+  const rows = txFile.entries.filter(([k, n, t]) => !f || t.toLowerCase().includes(f) || String(k) === f || String(n) === f);
+  $('tx_count').textContent = L.tx_count.replace('%s', rows.length);
+  $('tx_list').innerHTML = rows.map(([k, n, t]) => `<option value="${k}">#${k} · ${n} — ${esc(t)}</option>`).join('');
+}
+function textKey() { const k = $('tx_list').value; return k === '' ? null : `${txFile.file}#${k}`; }
+function stepText(d) {
+  const o = $('tx_list'); if (!o.options.length) return; o.selectedIndex = Math.max(0, Math.min(o.options.length - 1, o.selectedIndex + d)); $('tx_num').value = textKey(); showText();
+}
+function showText() { const v = $('tx_num').value.trim() || textKey(); if (v) cmd({cmd: 'show_text', number: v, count: +$('tx_n').value || 1}); }
+$('tx_file').onchange = () => loadTextFile($('tx_file').value);
+$('tx_find').oninput = renderTexts;
+$('tx_list').onchange = () => { $('tx_num').value = textKey(); };
+$('tx_list').ondblclick = () => { $('tx_num').value = textKey(); showText(); };
+$('tx_show').onclick = showText;
+$('tx_prev').onclick = () => stepText(-1);
+$('tx_next').onclick = () => stepText(1);
+const PAGES = {t_texts: refreshTexts, t_book: refreshBook, t_party: refreshParty, t_scenes: refreshScenes, t_packets: refreshPackets, t_menus: refreshMenus, t_objects: refreshObjects, t_states: refreshStates};
 async function refresh() {
   try { const v = await get('/api/state'); if (v.error) throw new Error(v.error); last = v; renderState(v); $('msg').textContent = ''; } catch (e) { $('msg').textContent = String(e); }
   if (PAGES[tab] && (tab !== 't_states' || !refresh.statesShown)) { try { await PAGES[tab](); } catch (e) { $('msg').textContent = String(e); } }

@@ -58,9 +58,14 @@ SET_GOLD = {'dq4': ('_Z12cmd_set_goldP16CommandParameter', 4), 'dq5': ('_Z10cmdS
 ITEM_COUNT_MAX = 99
 # Mini-games started from anywhere, as the game starts them: DQ IV / V the scripts' own command (cmd_mini_game / cmdMiniGame: 0 poker, 1 slot machines), DQ VI
 # Global::setMinigame then startCasino (what its CmdMiniGame does), the other parts by their own Global::start... call.
-MINIGAMES = {'dq4': (('poker', 'cmd', 0), ('slots', 'cmd', 1)),
-             'dq5': (('poker', 'cmd', 0), ('slots', 'cmd', 1), ('slime_race', 'global', '_ZN6Global14startSlimeRaceEv'), ('slime_touch', 'global', '_ZN6Global15startSlimeTouchEv')),
-             'dq6': (('poker', 'casino', 0), ('slots', 'casino', 1), ('curling', 'global', '_ZN6Global12startCurlingEv'))}
+MINIGAMES = {'dq4': (('poker', 'cmd', 0), ('slots', 'cmd', 1), ('monster_arena', 'stadium', None)),
+             'dq5': (('poker', 'cmd', 0), ('slots', 'cmd', 1), ('slime_race', 'global', '_ZN6Global14startSlimeRaceEv'), ('slime_touch', 'global', '_ZN6Global15startSlimeTouchEv'),
+                     ('tnt', 'hall', ('mdc1b1', 178))),
+             'dq6': (('poker', 'casino', 0), ('slots', 'casino', 1), ('curling', 'global', '_ZN6Global12startCurlingEv'), ('slime_arena', 'call', '_ZN6script19cmdBattleSlimeArenaEv'))}
+# DQ IV's monster arena: FightStadiumManager::setup (a match of the casino's table) then battleStart (its backdrop, its 4 monsters), as the casino's counter does;
+# DQ VI's slime arena: the scripts' own fight (script::cmdBattleSlimeArena: the rank of the arena's switches, the party of the moment, the backdrop of the place);
+# DQ V's T'n'T: its hall (the counter that sells the boards) with a T'n'T ticket (item 178) given, the board started by talking to the attendant as in the game.
+STADIUM = ('_ZN19FightStadiumManager12getSingletonEv', '_ZN19FightStadiumManager5setupEv', '_ZN19FightStadiumManager11battleStartEv')
 MINIGAME_CMD = {'dq4': ('_Z13cmd_mini_gameP16CommandParameter', 4), 'dq5': ('_Z11cmdMiniGamePv', 0)}          # (function, offset of the game number in its block)
 START_BOOK = '_ZN6Global9startBookEv'                                   # copies of an item given at once
 MONSTER_NAMES = 'assets/msg/en/b1002000.mpt'           # monster names: how many there are (the French patch writes its texts in the English slot)
@@ -528,6 +533,12 @@ class Catalog:
             elif kind == 'casino':
                 core.call(core.export('_ZN6Global11setMinigameEi'), eng._global(), arg, label='Global::setMinigame')
                 core.call(core.export('_ZN6Global11startCasinoEv'), eng._global(), label='Global::startCasino')
+            elif kind == 'stadium':
+                st = core.call(core.export(STADIUM[0]), label=STADIUM[0])
+                for fn in STADIUM[1:]: core.call(core.export(fn), st, label=fn)
+            elif kind == 'call': core.call(core.export(arg), label=arg)
+            elif kind == 'hall':
+                self.give_item({'item': arg[1], 'count': 1}); self.start_town(arg[0])
             else: core.call(core.export(arg), eng._global(), label=arg)
         self.in_step.append(start); self.d.note(tr(N_('debug.catalog_minigame')) % m[0])
         return {'ok': True}

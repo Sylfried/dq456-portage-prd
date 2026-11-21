@@ -93,9 +93,17 @@ class DebugService:
             self.party = PY.Party(self, self.catalog)                    # members, money, items (the panel's "Party" tab)
         except Exception as ex: self.party = None; print('debug party tools not available:', ex, flush=True)
         try:
+            from dq456_pc.debug import extras as EX
+            self.extras = EX.Extras(self, self.party)                    # side activities, DQ VI's vocations (the panel's "Party" tab)
+        except Exception as ex: self.extras = None; print('debug side systems not available:', ex, flush=True)
+        try:
             from dq456_pc.debug import book as BK
             self.book = BK.Book(self)                                    # the monster book (the panel's "Book" tab)
         except Exception as ex: self.book = None; print('debug monster book not available:', ex, flush=True)
+        try:
+            from dq456_pc.debug import texts as TX
+            self.texts = TX.Texts(self, self.catalog) if self.catalog is not None else None          # any message in the game's window (the panel's "Texts" tab)
+        except Exception as ex: self.texts = None; print('debug text viewer not available:', ex, flush=True)
         port = getattr(getattr(game, 'args', None), 'debug_port', None)
         if port != 0:                                             # (--debug-port 0: no web panel)
             try:

@@ -613,6 +613,13 @@
   {"key": "debug.book_in", "en": "monster book: %s added", "text": "몬스터 도감: %s 추가"},
   {"key": "debug.book_out", "en": "monster book: %s removed", "text": "몬스터 도감: %s 제거"},
   {"key": "debug.book_all_in", "en": "monster book: complete", "text": "몬스터 도감: 완성"},
-  {"key": "debug.book_all_out", "en": "monster book: emptied", "text": "몬스터 도감: 비움"}
+  {"key": "debug.book_all_out", "en": "monster book: emptied", "text": "몬스터 도감: 비움"},
+  {"key": "debug.extra_set", "en": "%s: %s", "text": "%s: %s"},
+  {"key": "debug.extra_job", "en": "character %d: vocation %d at level %d", "text": "캐릭터 %d: 직업 %d 레벨 %d"},
+  {"key": "debug.texts_file_bad", "en": "no such message file: %s", "text": "메시지 파일 없음: %s"},
+  {"key": "debug.texts_bad", "en": "not a message: %s", "text": "메시지가 아님: %s"},
+  {"key": "debug.texts_not_here", "en": "messages are shown in a town, a dungeon or on the world map only", "text": "메시지는 마을, 던전, 월드맵에서만 표시됩니다"},
+  {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "메시지가 이미 표시 중: 먼저 닫으세요"},
+  {"key": "debug.texts_shown", "en": "message %d shown", "text": "메시지 %d 표시"}
  ]
 }

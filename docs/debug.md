@@ -98,6 +98,9 @@ To reach what needs testing without playing up to it. What it changes is the eng
 - **Mini-games and book**, started from where the hero is, as the game starts them: DQ IV / V the scripts' `cmd_mini_game` / `cmdMiniGame` (0 poker, 1 slot
   machines), DQ VI `Global::setMinigame` then `startCasino`; DQ V's slime race and slime touch, DQ VI's slime curling by their `Global::start...`; the monster
   book by `Global::startBook`.
+  The arenas: DQ IV's monster arena as the casino's counter starts it (`FightStadiumManager::setup`, a match of its table, then `battleStart`: the arena's backdrop
+  and its 4 monsters); DQ VI's slime arena by the scripts' own fight (`script::cmdBattleSlimeArena`: the rank of the arena's switches, the party of the moment, the
+  backdrop of the place). DQ V's T'n'T: its hall (map `mdc1b1`) with a T'n'T ticket given; a board starts by talking to the attendant, as in the game.
 
 The calls that start a scene are made during the next engine step, just before GameUpdate (`Engine.step_calls`), so that their packets (the fade, a fight's
 music) are read with the step's: the engine's output cursors are rewound first, as GameUpdate does (it would write over them).
@@ -114,6 +117,11 @@ music) are read with the step's: the engine's output cursors are rewound first, 
   `GameStatus::setPlayTime`; DQ IV's adventure record too (battles, victories, wipeouts, escapes, monsters defeated, gold earned, highest damage, title...,
   `status::BattleHistory`'s getters and setters; the chapter's counters are the current chapter's).
 - **Every item × 99**: `HaveItemSack::add(item, 99)` on the bag for every item the game names, the ones the game's own `HaveItemSack::fill` leaves out included.
+- **Side activities** (`dq456_pc/debug/extras.py`): DQ VI's fashion contest rank (1 to 8: the global switches 0x209 to 0x20f, as `StoryStatus::getContestRank`
+  reads them), its slime arena ranks won (0 to 8: the switches 0x275 to 0x27c), its slime curling courses open and best scores (`g_CurlingData`: a bit per course
+  at + 6, a u16 per course at + 8); DQ V's Slime Touch ranking (`g_TouchData`: 10 scores, 8 bytes apart). DQ IV has none.
+- **Vocations** (DQ VI): each member's level (0 to 8) in each of the 18 vocations, named by the engine (TextAPI kind 0xb), through `HaveJob::setJobLevel`, which
+  also puts the number of fights that level needs (the member's status + 0x230).
 
 ## Monster book (panel, "Book" tab)
 
@@ -124,3 +132,14 @@ and a "met" bit per page, the bits the book's completion counts (DQ IV 210 pages
 - **One monster**: ticked, it is put in the book through the game's setter (`setEncount` / `setMonsterEncount`), counted defeated once and its item obtained once
   when it had neither, so its page shows everything; unticked, it is taken out and both counts go back to 0. A search field filters the list.
 - **The whole book**: every page at once (the book at 100 %), or the book emptied.
+
+## Texts (panel, "Texts" tab)
+
+`dq456_pc/debug/texts.py`: any message of the game in the game's own message window, where the hero is (a town, a dungeon or the world map), to check a translation
+in place: its line breaks, its pages, its speaker and the names its macros fill in. The messages are the files `assets/msg/en/b<NNNNNNN>.mpt` (the French patch writes
+its texts in the English slot); a message's number is the file's first number (its header) plus its key, and the panel names it `b<NNNNNNN>.mpt#<key>` as the
+translation's workbooks do. A file is chosen, then a message (search field; double click shows it), or a number or a key is typed; ◀ / ▶ show the previous / next one.
+
+The message is shown as the scripts show one, through their "message" command (DQ IV `cmd_message1`, DQ V `CmdMessage::initialize`, DQ VI
+`script::CmdMessage1::initialize`; a block of (first message, count)), during the next engine step: the speaker's voice, the pages, turned and closed with A
+as any other. Several messages in a row: their count. Refused in a fight or while a message is shown.

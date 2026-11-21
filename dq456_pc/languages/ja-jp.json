@@ -613,6 +613,13 @@
   {"key": "debug.book_in", "en": "monster book: %s added", "text": "モンスター図鑑: %sを追加"},
   {"key": "debug.book_out", "en": "monster book: %s removed", "text": "モンスター図鑑: %sを削除"},
   {"key": "debug.book_all_in", "en": "monster book: complete", "text": "モンスター図鑑: コンプリート"},
-  {"key": "debug.book_all_out", "en": "monster book: emptied", "text": "モンスター図鑑: 空にした"}
+  {"key": "debug.book_all_out", "en": "monster book: emptied", "text": "モンスター図鑑: 空にした"},
+  {"key": "debug.extra_set", "en": "%s: %s", "text": "%s: %s"},
+  {"key": "debug.extra_job", "en": "character %d: vocation %d at level %d", "text": "キャラクター%d: 職業%dをレベル%dに"},
+  {"key": "debug.texts_file_bad", "en": "no such message file: %s", "text": "メッセージファイルがありません: %s"},
+  {"key": "debug.texts_bad", "en": "not a message: %s", "text": "メッセージではありません: %s"},
+  {"key": "debug.texts_not_here", "en": "messages are shown in a town, a dungeon or on the world map only", "text": "メッセージは町・ダンジョン・ワールドマップでのみ表示できます"},
+  {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "メッセージ表示中です。先に閉じてください"},
+  {"key": "debug.texts_shown", "en": "message %d shown", "text": "メッセージ%dを表示"}
  ]
 }
