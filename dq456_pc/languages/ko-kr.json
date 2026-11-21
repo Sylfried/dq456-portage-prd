@@ -618,6 +618,8 @@
   {"key": "debug.texts_shown", "en": "message %d shown", "text": "메시지 %d 표시"},
   {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "캐릭터 %d은(는) 게스트라 레벨이 없습니다"},
   {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "텍스트를 입력하세요 (최대 %d자)"},
-  {"key": "debug.party_value_range", "en": "from %d to %d", "text": "%d~%d"}
+  {"key": "debug.party_value_range", "en": "from %d to %d", "text": "%d~%d"},
+  {"key": "debug.party_hero_bad", "en": "a name of 1 to %d characters (no @, %% or line break)", "text": "1~%d자의 이름 (@, %%, 줄바꿈 불가)"},
+  {"key": "debug.party_hero", "en": "hero and adventure log: %s", "text": "주인공과 모험의 서: %s"}
  ]
 }

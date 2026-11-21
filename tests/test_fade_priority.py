@@ -23,6 +23,7 @@ def fake(msg_type):
     w = types.SimpleNamespace(engine=eng, painted=[])
     w._paint_fade = lambda fd: w.painted.append(fd['name'])
     w._background_fade_in_front = lambda: MD.MenusMixin._background_fade_in_front(w)
+    w._overlay_fade = lambda e, fd, background: False          # (no screen laid over the game opening or closing)
     return w
 
 

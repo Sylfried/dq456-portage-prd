@@ -618,6 +618,8 @@
   {"key": "debug.texts_shown", "en": "message %d shown", "text": "Nachricht %d angezeigt"},
   {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "Figur %d ist ein Gast: das Spiel gibt ihr keine Stufe"},
   {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "einen Text eingeben (höchstens %d Zeichen)"},
-  {"key": "debug.party_value_range", "en": "from %d to %d", "text": "von %d bis %d"}
+  {"key": "debug.party_value_range", "en": "from %d to %d", "text": "von %d bis %d"},
+  {"key": "debug.party_hero_bad", "en": "a name of 1 to %d characters (no @, %% or line break)", "text": "ein Name mit 1 bis %d Zeichen (ohne @, %% oder Zeilenumbruch)"},
+  {"key": "debug.party_hero", "en": "hero and adventure log: %s", "text": "Held und Abenteuerlog: %s"}
  ]
 }

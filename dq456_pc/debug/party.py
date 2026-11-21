@@ -42,6 +42,11 @@ SACK_ADD = '_ZN6status12HaveItemSack3addEii'
 SACK_VTABLE = '_ZTVN6status12HaveItemSackE'
 ITEM_FULL = 99
 LEVEL_MAX, EXP_MAX = 99, 9999999
+HERO = {'dq4': ('_ZN6status7g_StoryE', 0, 0xb70, '_ZN6status11StoryStatus11setHeroNameEPc', 31),          # the hero's name, which is the adventure log's: (object, offset of
+        'dq5': ('_ZN6status13PlayerDataAll11playerData_E', 0x130, 4, '_ZN6status10PlayerData13setNameStringEPc', 24),          # the setter's this, of the name in it,
+        'dq6': ('_ZN6status13PlayerDataAll11playerData_E', 0x178, 4, '_ZN6status10PlayerData13setNameStringEPc', 25)}         # setter, most bytes) as the log's name entry sets it
+HERO_DQ6_DEFAULT = ('_ZN6status7g_StoryE', '_ZN6status11StoryStatus18setDefaultHeroNameEPc')          # (DQ VI's log name entry also sets this one)
+HERO_CHARS = 8                                         # characters of the game's name entry
 VALUE_MAX = {'gold': 999999, 'bank': 99999000, 'play_time': 216000000 - 1}          # the games' own caps (their setters: BasePartyStatus::setGold..., GameStatus::setPlayTime, in 1/60 s)
 COINS_MAX = {'dq4': 999999, 'dq5': 9999999, 'dq6': 9999999}; MEDALS_MAX = {'dq4': 99, 'dq5': 999, 'dq6': 999}
 STAT_MAX = {'HeroLevel': LEVEL_MAX}                     # (DQ IV's record: otherwise its field's size, MASKS)
@@ -60,7 +65,7 @@ class Party:
         self._names = None
         service.panel_pages['/api/party'] = self.info
         service.panel_commands.update({'party_level': self.set_level, 'party_exp': self.set_exp, 'party_join': self.join, 'party_quit': self.quit,
-                                       'value': self.set_value, 'items_max': self.items_max})
+                                       'value': self.set_value, 'items_max': self.items_max, 'hero_name': self.set_hero_name})
 
     # --- reading -------------------------------------------------------------------------------------------------------------------------------------------------
     def _core(self): return self.g.engine.core
@@ -123,8 +128,28 @@ class Party:
         for field, t in HISTORY[1]: out['stat:' + field] = [0, STAT_MAX.get(field, MASKS[t])]
         return out
 
+    def hero_name(self):
+        """The hero's name, which is the adventure log's (None if unreadable)."""
+        c = self._core(); sym, this, at, _f, size = HERO[self.key]; a = c.export(sym)
+        return bytes(c.mem(a + this + at, size + 1)).split(b'\0')[0].decode('utf-8', 'replace') if a else None
+
+    def set_hero_name(self, c):
+        """The hero's name, as the adventure log's name entry sets it (DQ IV: StoryStatus::setHeroName, the messages' hero name too; DQ V / VI: the hero's
+        PlayerData::setNameString, DQ VI StoryStatus::setDefaultHeroName too). Kept in the log at its next save."""
+        name = str(c.get('name') or '').strip(); sym, this, _at, fn, size = HERO[self.key]
+        if not name or len(name) > HERO_CHARS or len(name.encode('utf-8')) > size or any(ch in name for ch in '@%\n'):
+            return {'error': tr(N_('debug.party_hero_bad')) % HERO_CHARS}
+        core = self._core(); a, f = core.export(sym), core.export(fn)
+        if not a or not f: return {'error': tr(N_('debug.catalog_missing')) % fn}
+        core.call(f, a + this, core.cstr(name.encode('utf-8')), label=fn)
+        if self.key == 'dq6':
+            o, g = (core.export(x) for x in HERO_DQ6_DEFAULT)
+            if o and g: core.call(g, o, core.cstr(name.encode('utf-8')), label=HERO_DQ6_DEFAULT[1])
+        self.d.note(tr(N_('debug.party_hero')) % name); return {'ok': True, 'name': self.hero_name()}
+
     def info(self, q=None):
-        return {'game': self.key, 'members': self.members(), 'characters': self.characters(), 'values': self.values(), 'limits': self.limits()}
+        return {'game': self.key, 'members': self.members(), 'characters': self.characters(), 'values': self.values(), 'limits': self.limits(),
+                'hero': self.hero_name(), 'hero_chars': HERO_CHARS}
 
     # --- commands ------------------------------------------------------------------------------------------------------------------------------------------------
     def _member(self, c):

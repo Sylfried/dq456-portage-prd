@@ -25,6 +25,16 @@ SIDES_FEATHER = 0.08            # the curling: width of the soft border between 
 # clip space (shader Custom/BackOrtho: gl_Position = in_POSITION0, opaque, queue Background+100), x from -1 to 1 and y from -0.89 x Camera.aspect to + 0.89 x Camera.aspect: the phone's whole
 # width, 0.89 of that width in height, centered; uv (0, 1) and (1, 1) at the bottom, (1, 0) and (0, 0) at the top (the picture upside down, as the game shows it).
 PARCHMENT_HEIGHT = 0.89
+# Screens laid over the game (the bestiary, the casino, the mini-games): the game opens and closes them with a fade to black (UnitySetFade, then the part's fade-in); the port
+# shows that fade as the place blurring and darkening to the blurred backdrop behind the screen, then the screen coming out of the blur (and back when it closes): no black.
+OVERLAY_STARTS = ('_ZN6Global9startBookEv', '_ZN6Global11startCasinoEv', '_ZN6Global12startCurlingEv', '_ZN6Global14startSlimeRaceEv', '_ZN6Global15startSlimeTouchEv')
+OVERLAY_PARTS = ENGINE.MINIGAME_PARTS + ENGINE.PHONE_SCENE_PARTS
+TRANSITION_STEPS = 240          # engine frames: a transition not over by then is forgotten (its fades are black again)
+
+
+def fade_black(fd):
+    """Is a fade black (to or from black: the screen changes)?"""
+    return max(fd.get('col') or (0.0, 0.0, 0.0)) < 0.05
 
 
 def _gen(f):
@@ -64,6 +74,42 @@ class BackdropMixin:
         except Exception as ex: print('warming up the shaders:', ex, flush=True)
         finally:
             gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0); gl.glViewport(0, 0, *self.get_framebuffer_size())
+
+    def _overlay_hooks(self):
+        """Once per engine: code hooks on the Global::start* of the screens laid over the game (OVERLAY_STARTS), the start of their transition."""
+        core = getattr(self.engine, 'core', None)
+        if core is None or getattr(self, '_overlay_hooked', None) is core: return
+        self._overlay_hooked = core
+        import unicorn
+        def started(uc, addr, size, user): self.overlay_opening = True
+        found = [a for a in (core.export(n) for n in OVERLAY_STARTS) if a]
+        for a in found: core.uc.hook_add(unicorn.UC_HOOK_CODE, started, None, a, a)
+        if found: self.engine._flush_tb('overlay screens')
+
+    def _overlay_update(self, e):
+        """The transition of a screen laid over the game, updated once a frame: {'phase': 'open' / 'close', 'seen', 'f0'} or None. Open: from the Global::start* that
+        opens it until its own fade-in is over; close: from the black fade-out that starts in it until the place's fade-in is over."""
+        try: self._overlay_hooks()
+        except Exception as ex: self._overlay_hooked = getattr(self.engine, 'core', None); print('overlay screens: %s' % ex, flush=True)
+        over = e.part in OVERLAY_PARTS or bool(self._slime_touch_up()); fd = e.fade; st = getattr(self, 'overlay_tr', None); frames = self.engine.frames
+        if getattr(self, 'overlay_opening', False): self.overlay_opening = False; st = {'phase': 'open', 'seen': over, 'f0': frames}
+        elif st is None and over and fade_black(fd) and fd['end'] >= 0.99 and fd['a'] < 0.99: st = {'phase': 'close', 'seen': False, 'f0': frames}
+        if st is not None:
+            if (st['phase'] == 'open') == over: st['seen'] = True
+            if (st['seen'] and fd['a'] <= 0.004 and fd['end'] <= 0.01) or frames - st['f0'] > TRANSITION_STEPS: st = None
+        self.overlay_tr = st
+        return st
+
+    def _overlay_fade(self, e, fd, background):
+        """A black fade of such a transition drawn as a blur instead: what is drawn blurred `a` much, darkened to the backdrop's light on the place's side.
+        True when it replaced the fade (nothing else to draw)."""
+        st = self._overlay_update(e) if not background else getattr(self, 'overlay_tr', None)
+        if st is None or not fade_black(fd): return False
+        if background or fd['a'] <= 0.004: return True
+        over = e.part in OVERLAY_PARTS or bool(self._slime_touch_up()); a = min(float(fd['a']), 1.0)
+        if self.screen_blur is None: self.screen_blur = ScreenBlur()
+        self.screen_blur.apply(*self.get_framebuffer_size(), lum=1.0 if over else 1.0 - (1.0 - BACKDROP_LUM) * a, mix=a)
+        return True
 
     def _backdrop_keep(self, e):
         """The scene of a town or of the world map has just been drawn (interface not yet): reduced copy, kept for the mini-games (not the title screen, not a mini-game itself)."""

@@ -190,6 +190,7 @@ class MenusMixin:
         otherwise the "FadeForMenu" plane (Custom/FrontFade, Overlay queue: in front of everything, windows and messages included). When the background plane has the FrontFade shader
         (`_background_fade_in_front`), it is drawn with the front plane, just before it, over the windows (the order between the two Overlay planes is assumed)."""
         e = self.engine.state
+        if self._overlay_fade(e, e.background_fade if background else e.fade, background): return          # (the screens laid over the game: their black fades become a blur, backdrop.py)
         if self._background_fade_in_front():
             if background: return
             self._paint_fade(e.background_fade)
@@ -828,9 +829,9 @@ class MenusMixin:
                 if self.ui_g.f[p].typ in CENTERED_WINDOWS: self._initial_border(self.ui_g.f[p], tf[0], tf[1], tf[2], True)
                 self.ui_render.draw_all([self.ui_g.f[p]], tf[0], tf[1], tf[2], (self.width, self.height))
             if square:                                                                # (its message centered between it and the interface under it: the book's page bar, a shop's lists, the screen's edge)
-                edges = self._square_bottom(entries, names, pictures); e = self.ui_msg.extent() if edges else None
+                below = self._square_bottom(entries, names, pictures); e = self.ui_msg.extent() if below else None
                 if e:
-                    mtf = tf_msg or (cx, ref_frame('msg')[0], s); want = (edges[0] + edges[1]) / 2.0
+                    mtf = tf_msg or (cx, ref_frame('msg')[0], s); want = (below[0] + below[1]) / 2.0
                     new = (want - mtf[1]) / mtf[2] - (e[0] + e[1]) / 2.0
                     new = min(new, (H - mtf[1]) / mtf[2] - e[1]); new = max(new, -mtf[1] / mtf[2] - e[0])          # (on the screen)
                     delta = new - dz; dz = self.ui_dz = new

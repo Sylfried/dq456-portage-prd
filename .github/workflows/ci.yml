@@ -82,6 +82,7 @@ jobs:
           python tests/test_same_queue_scenery.py
           python tests/test_native_memcpy.py
           python tests/test_fade_in_current.py
+          python tests/test_overlay_transitions.py
           python tests/test_menu_directions.py
           python tests/test_battle_cascade_end.py
           python tests/test_phone_scenes.py

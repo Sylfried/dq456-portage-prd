@@ -53,6 +53,7 @@ pre { background: #101216; padding: 8px; overflow: auto; max-height: 60vh; }
     <p class="dim" id="sc_fight_note"></p><div class="row"><button id="sc_backdrop_go"></button><span class="dim" id="sc_backdrop_cur"></span></div>
   </section>
   <section id="t_party">
+    <h4 id="h_hero"></h4><div class="row"><input id="pa_hero" size="14" maxlength="8"><button id="pa_hero_go"></button><span class="dim" id="pa_hero_note"></span></div>
     <h4><span id="h_members"></span><button class="allmax" data-allmax="levels"></button></h4><div id="pa_members"></div>
     <div class="row"><select id="pa_char"></select><button id="pa_join"></button></div>
     <h4 id="h_jobs_box"><span id="h_jobs"></span><button class="allmax" data-allmax="jobs"></button></h4><div id="pa_jobs"></div>
@@ -96,6 +97,7 @@ const T = {
        save: 'Sauver', load: 'Charger', empty: 'vide', paused: 'EN PAUSE', replay: 'REJEU', frame: 'image', part: 'partie', map: 'carte', flags: 'drapeaux',
        fade: 'fondu avant', bfade: 'fondu arrière', menu: 'menu actif', message: 'message', pace: 'rythme', sprites: 'Personnages', meshes: 'Maillages', camera: 'caméra',
        port: 'port', type: 'type', cursor: 'curseur', buttons: 'boutons', lines: 'lignes', yes: 'oui', no: 'non', confirm_write: 'Écrire dans la mémoire du moteur ?', loadq: 'Charger cette sauvegarde d\'état ?',
+       hero_h: 'Nom du héros et du journal', hero_go: 'Renommer', hero_note: 'Le journal porte le nom du héros : le nouveau nom y est écrit à la prochaine sauvegarde.',
        allmax: 'Tout au max', places: 'Lieux', story: 'Histoire', fights: 'Combats', activities: 'Activités', min: 'Min', max: 'Max', money: 'Argent', give_h: 'Donner un objet', playstats: 'Temps de jeu et statistiques',
        scene_maps: 'Cartes de scène (sans entrée : le héros arrive à l\'origine de la carte)', map_note: 'Le héros arrive par l\'entrée principale de la carte (celle qui vient du monde, sinon de la carte la plus proche), comme par une porte : la carte charge ses personnages, sa musique et ses effets.',
        world_h: 'Carte du monde', maph: 'Carte', go: 'Y aller', world: 'Y aller', world_here: 'devant le lieu actuel', world_n: 'Monde', current: 'carte actuelle', step: 'Étape de l\'histoire', apply: 'Appliquer', step_go: 'aller sur sa carte',
@@ -123,6 +125,7 @@ const T = {
        save: 'Save', load: 'Load', empty: 'empty', paused: 'PAUSED', replay: 'REPLAY', frame: 'frame', part: 'part', map: 'map', flags: 'flags',
        fade: 'front fade', bfade: 'back fade', menu: 'active menu', message: 'message', pace: 'pace', sprites: 'Characters', meshes: 'Meshes', camera: 'camera',
        port: 'port', type: 'type', cursor: 'cursor', buttons: 'buttons', lines: 'lines', yes: 'yes', no: 'no', confirm_write: 'Write into the engine\'s memory?', loadq: 'Load this savestate?',
+       hero_h: 'Name of the hero and the adventure log', hero_go: 'Rename', hero_note: 'The adventure log bears the hero\'s name: the new name is written into it at the next save.',
        allmax: 'All max', places: 'Places', story: 'Story', fights: 'Fights', activities: 'Activities', min: 'Min', max: 'Max', money: 'Money', give_h: 'Give an item', playstats: 'Play time and statistics',
        scene_maps: 'Scene maps (no entrance: the hero arrives at the map\'s origin)', map_note: 'The hero arrives through the map\'s main entrance (the one from the world map, otherwise from the nearest map), as through a door: the map loads its characters, its music and its effects.',
        world_h: 'World map', maph: 'Map', go: 'Go', world: 'Go', world_here: 'in front of the current place', world_n: 'World', current: 'current map', step: 'Story step', apply: 'Apply', step_go: 'go to its map',
@@ -185,7 +188,7 @@ function texts() {
     ['tx_show', 'tx_show'], ['l_tx_n', 'tx_n'], ['tx_note', 'tx_note'], ['h_tx_custom', 'tx_custom'], ['tx_custom_show', 'tx_custom_show'],
     ['bk_all', 'bk_all'], ['bk_none', 'bk_none'], ['bk_note', 'bk_note'],
     ['h_extras', 'extras'], ['h_jobs', 'jobs'],
-    ['h_members', 'members'], ['pa_join', 'join'], ['h_values', 'playstats'], ['pa_items', 'items_btn'], ['pa_items_note', 'items_note'], ['h_money', 'money'],
+    ['h_hero', 'hero_h'], ['pa_hero_go', 'hero_go'], ['pa_hero_note', 'hero_note'], ['h_members', 'members'], ['pa_join', 'join'], ['h_values', 'playstats'], ['pa_items', 'items_btn'], ['pa_items_note', 'items_note'], ['h_money', 'money'],
     ['h_give', 'give_h'], ['sc_give', 'give'], ['sc_items_note', 'items_note'], ['h_world', 'world_h'], ['sc_map_note', 'map_note'],
     ['sc_fight', 'start_fight'], ['sc_fight_note', 'fight_note'], ['h_sw', 'switches'], ['sc_sw_note', 'sw_note'], ['sc_on', 'on'], ['sc_off', 'off']]) $(id).textContent = L[k];
   $('sc_set').innerHTML = ['global', 'area', 'local'].map(k => `<option value="${k}">${L['sw_' + k]}</option>`).join(''); $('sc_item_find').placeholder = L.find; $('bk_find').placeholder = L.find; $('tx_find').placeholder = L.find;
@@ -314,6 +317,7 @@ async function refreshParty(force) {
     `<tr><td>${esc(m.name)} <span class="tech">#${m.id}</span></td>` + (m.guest ? `<td colspan="4" class="dim">${L.guest}</td>` :
     `<td>${num('pl_' + m.id, m.level, p.limits.level, `[data-lv='${m.id}']`)}</td><td><button data-lv="${m.id}">${L.set}</button></td>` +
     `<td>${num('px_' + m.id, m.exp, p.limits.exp, `[data-xp='${m.id}']`)}</td><td><button data-xp="${m.id}">${L.set}</button></td>`) + `<td><button data-out="${m.id}">${L.remove}</button></td></tr>`).join('') + '</table>';
+  if (document.activeElement !== $('pa_hero')) $('pa_hero').value = p.hero || ''; $('pa_hero').maxLength = p.hero_chars || 8;
   const inside = new Set(p.members.map(m => m.id));
   $('pa_char').innerHTML = p.characters.filter(([n]) => !inside.has(n)).map(([n, name]) => `<option value="${n}">${esc(name)} — #${n}</option>`).join('');
   const row = ([k, v]) => `<span class="dim">${esc(valueLabel(k))}</span><span class="row" style="margin:0">${(TIMES.has(k) ? timeField : num)('pv_' + k.replace(':', '_'), v, p.limits[k], `[data-val='${k}']`)}<button data-val="${k}">${L.set}</button></span>`;
@@ -360,6 +364,7 @@ async function allMax(kind) {          // every value of a section at its most (
   return refreshParty(true);
 }
 for (const b of document.querySelectorAll('[data-allmax]')) b.onclick = () => allMax(b.dataset.allmax);
+$('pa_hero_go').onclick = () => cmd({cmd: 'hero_name', name: $('pa_hero').value}).then(() => refreshParty(true));
 $('pa_join').onclick = () => cmd({cmd: 'party_join', id: +$('pa_char').value}).then(() => setTimeout(() => refreshParty(true), 300));
 $('pa_items').onclick = () => cmd({cmd: 'items_max'});
 let bookKey = '';

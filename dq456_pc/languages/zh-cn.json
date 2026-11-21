@@ -618,6 +618,8 @@
   {"key": "debug.texts_shown", "en": "message %d shown", "text": "已显示消息%d"},
   {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "角色%d是客人：游戏不给其等级"},
   {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "请输入文本（最多 %d 个字符）"},
-  {"key": "debug.party_value_range", "en": "from %d to %d", "text": "%d 至 %d"}
+  {"key": "debug.party_value_range", "en": "from %d to %d", "text": "%d 至 %d"},
+  {"key": "debug.party_hero_bad", "en": "a name of 1 to %d characters (no @, %% or line break)", "text": "1 至 %d 个字符的名字（不含 @、%% 或换行）"},
+  {"key": "debug.party_hero", "en": "hero and adventure log: %s", "text": "主角与冒险之书：%s"}
  ]
 }

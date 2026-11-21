@@ -29,6 +29,7 @@ class Core:
     def mem(self, a, n): return bytes(self.ram[a:a + n])
     def mem_w(self, a, b): self.ram[a:a + len(b)] = b
     def scratch(self, name, n): return 0x60000
+    def cstr(self, b): self.mem_w(0x61000, bytes(b) + b'\0'); return 0x61000
     def read_cstr(self, a): return bytes(self.ram[a:self.ram.index(0, a)])
     def call(self, f, *args, label=None):
         self.calls.append((label, args))
@@ -94,6 +95,20 @@ class PartyTab(unittest.TestCase):
         self.p.set_value({'key': 'play_time', 'value': 216000})
         self.assertIn((PY.PLAY_TIME[0], (GAME_AT, 216000)), self.core.calls)
         for bad in ({'key': 'bank', 'value': -1}, {'key': 'nothing', 'value': 1}, {'key': 'gold', 'value': 'x'}): self.assertIn('error', self.p.set_value(bad))
+
+    def test_hero_and_log_name(self):
+        """the hero's name, which is the adventure log's: read where the game keeps it, set through the setter its log's name entry calls (DQ VI: its default hero name too)"""
+        SYMS.update({PY.HERO['dq4'][0]: 0x6000, PY.HERO['dq4'][3]: 0x960})
+        self.core.mem_w(0x6000 + PY.HERO['dq4'][2], 'Sofià'.encode() + b'\0')
+        self.assertEqual(self.p.info()['hero'], 'Sofià'); self.assertEqual(self.p.info()['hero_chars'], PY.HERO_CHARS); self.assertIn('hero_name', self.s.panel_commands)
+        self.assertEqual(self.p.set_hero_name({'name': ' Élodie '})['ok'], True)
+        (label, args), = [c for c in self.core.calls if c[0] == PY.HERO['dq4'][3]]
+        self.assertEqual((args[0], self.core.read_cstr(args[1]).decode()), (0x6000, 'Élodie'))
+        for bad in ('', 'x' * (PY.HERO_CHARS + 1), 'a@b', '50%'): self.assertIn('error', self.p.set_hero_name({'name': bad}))
+        PY.GM = types.SimpleNamespace(profile=lambda: types.SimpleNamespace(key='dq6')); p6 = PY.Party(Service(self.core)); self.core.calls.clear()
+        SYMS.update({PY.HERO['dq6'][0]: 0x6100, PY.HERO['dq6'][3]: 0x964, PY.HERO_DQ6_DEFAULT[0]: 0x6800, PY.HERO_DQ6_DEFAULT[1]: 0x968})
+        p6.set_hero_name({'name': 'Rek'})
+        self.assertEqual([(l, a[0]) for l, a in self.core.calls], [(PY.HERO['dq6'][3], 0x6100 + PY.HERO['dq6'][1]), (PY.HERO_DQ6_DEFAULT[1], 0x6800)])
 
     def test_limits_are_the_games_caps(self):
         """each value's field takes what the game's setter keeps (gold 999,999, DQ IV's medals 99...), the panel is told them; more is refused"""

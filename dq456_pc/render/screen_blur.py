@@ -35,6 +35,12 @@ void main() {
     fragColor = vec4(texture(tex, v_uv).rgb, amount * smoothstep(0.45, 1.3, r)); }'''
 
 
+FRAG_MIX = '''#version 330 core
+in vec2 v_uv; out vec4 fragColor;
+uniform sampler2D tex; uniform float amount; uniform float lum;
+void main() { fragColor = vec4(texture(tex, v_uv).rgb * lum, amount); }'''          # (the blurred copy over the whole picture, `amount` of it: a transition that blurs)
+
+
 FRAG_SIDES = '''#version 330 core
 in vec2 v_uv; out vec4 fragColor;
 uniform sampler2D tex; uniform float inner; uniform float feather; uniform float lum; uniform float stretch;
@@ -76,7 +82,7 @@ def _gen(f):
 
 class ScreenBlur:
     def __init__(self):
-        self.size = None; self.levels = []; self.spare = None; self.prog = None; self.vl = None; self.ok = True; self.prog_edges = None; self.vl_edges = None; self.prog_sides = None; self.vl_sides = None
+        self.size = None; self.levels = []; self.spare = None; self.prog = None; self.vl = None; self.ok = True; self.prog_edges = None; self.vl_edges = None; self.prog_sides = None; self.vl_sides = None; self.prog_mix = None; self.vl_mix = None
 
     def _texture(self, w, h):
         t = gl.GLuint(); gl.glGenTextures(1, ctypes.byref(t)); gl.glBindTexture(gl.GL_TEXTURE_2D, t.value)
@@ -110,9 +116,10 @@ class ScreenBlur:
         self.prog['step'] = step; self.prog['lum'] = lum
         gl.glActiveTexture(gl.GL_TEXTURE0); gl.glBindTexture(gl.GL_TEXTURE_2D, t); self.vl.draw(gl.GL_TRIANGLES)
 
-    def apply(self, W, H, lum=1.0, edges=None, sides=None, stretch=True):
+    def apply(self, W, H, lum=1.0, edges=None, sides=None, stretch=True, mix=None):
         """Replaces the content of the window (W x H pixels, framebuffer 0) with its blurred copy; with `edges` (0..1), only the edges of the picture, by that much (the middle stays sharp);
-        with `sides` = (inner, feather), only the sides of a sharp middle column (see FRAG_SIDES), darkened by `lum`; `stretch`: the sides show the column stretched (otherwise their own scenery).
+        with `sides` = (inner, feather), only the sides of a sharp middle column (see FRAG_SIDES), darkened by `lum`; `stretch`: the sides show the column stretched (otherwise their own scenery);
+        with `mix` (0..1), the blurred copy darkened by `lum` laid over the whole picture, that much of it (the transitions of the screens laid over the game, backdrop.py).
         False if it could not be done (the screen stays as it is)."""
         if not self.ok or W < 16 or H < 16: return False
         try:
@@ -128,7 +135,7 @@ class ScreenBlur:
             self.prog.use()
             self._pass(low, self.spare, (1.0 / w, 0.0))                        # horizontal
             self._pass(self.spare, low, (0.0, 1.0 / h))                        # vertical
-            if edges is None and sides is None: self._pass(low, None, (0.0, 0.0), lum)           # back into the window, stretched (bilinear)
+            if edges is None and sides is None and mix is None: self._pass(low, None, (0.0, 0.0), lum)           # back into the window, stretched (bilinear)
             self.prog.stop()
             if edges is not None:                                              # edges: the blurred copy over the scene, its opacity growing toward the edges
                 if self.prog_edges is None:
@@ -139,6 +146,15 @@ class ScreenBlur:
                 self.prog_edges.use(); self.prog_edges['amount'] = float(min(max(edges, 0.0), 1.0))
                 gl.glActiveTexture(gl.GL_TEXTURE0); gl.glBindTexture(gl.GL_TEXTURE_2D, low[0]); self.vl_edges.draw(gl.GL_TRIANGLES)
                 self.prog_edges.stop()
+            if mix is not None:                                                # mix: the blurred copy over the whole picture, `mix` of it
+                if self.prog_mix is None:
+                    self.prog_mix = ShaderProgram(Shader(VERTEX, 'vertex'), Shader(FRAG_MIX, 'fragment'))
+                    self.vl_mix = self.prog_mix.vertex_list(6, gl.GL_TRIANGLES, position=('f', [-1, -1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1]))
+                gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0); gl.glViewport(0, 0, W, H)
+                gl.glEnable(gl.GL_BLEND); gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+                self.prog_mix.use(); self.prog_mix['amount'] = float(min(max(mix, 0.0), 1.0)); self.prog_mix['lum'] = float(lum)
+                gl.glActiveTexture(gl.GL_TEXTURE0); gl.glBindTexture(gl.GL_TEXTURE_2D, low[0]); self.vl_mix.draw(gl.GL_TRIANGLES)
+                self.prog_mix.stop()
             if sides is not None:                                              # sides: the blurred copy beside the sharp column
                 if self.prog_sides is None:
                     self.prog_sides = ShaderProgram(Shader(VERTEX, 'vertex'), Shader(FRAG_SIDES, 'fragment'))
