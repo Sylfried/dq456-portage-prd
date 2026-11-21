@@ -81,6 +81,14 @@ def note_error(text):
         print('Error not written to the log (%r): %s' % (ex, text.strip()), flush=True); return False
 
 
+def phone_clip(frame, width, height, viewport):
+    """(x, y, w, h) in viewport pixels of the phone's screen (450 x 800 interface units centered on `frame` = (cx, cy, s), window pixels), cut to the viewport."""
+    cx, cy, s = frame; kx, ky = viewport[0] / max(1.0, float(width)), viewport[1] / max(1.0, float(height))
+    x0, x1 = max(0, int(round((cx - 225.0 * s) * kx))), min(int(viewport[0]), int(round((cx + 225.0 * s) * kx)))
+    y0, y1 = max(0, int(round((cy - 400.0 * s) * ky))), min(int(viewport[1]), int(round((cy + 400.0 * s) * ky)))
+    return x0, y0, max(0, x1 - x0), max(0, y1 - y0)
+
+
 class Game(FullScreenMixin, CameraMixin, FieldMixin, BattleMixin, TitleMixin, StaffrollMixin, SlimeTouchMixin, SlimeCurlingMixin, SugorokuMixin, SpotlightMixin, MenusMixin, KeyboardMouseMixin, SnapshotsMixin, OptionsMixin, CaptureEffectsMixin, BackdropMixin, MotionBlurMixin, ReplayMixin, ArenaAbortMixin, LoadingBarMixin, pyglet.window.Window):
     def __init__(self, args, reg=None):
         SV.note('startup', width_px=args.width_px, height_px=args.height_px, full_screen=getattr(args, 'full_screen', 0), shot=bool(args.shot))
@@ -899,6 +907,13 @@ class Game(FullScreenMixin, CameraMixin, FieldMixin, BattleMixin, TitleMixin, St
         self._draw_helptext()                                            # information lines (F1) over everything: menus, history, screen buttons, toasts, veils; not in the savestate thumbnails
         if self.debug is not None: self.debug.draw()                     # debug overlay (--debug), over the information lines
 
+    def _phone_clip(self):
+        """(x, y, w, h) in pixels of the drawing area of the phone's portrait screen in the bestiary's frame (book_frame: 450 x 800 interface units around its
+        center), for glScissor; None without a frame."""
+        frame = getattr(self, 'book_frame', None)
+        if frame is None: return None
+        return phone_clip(frame(), self.width, self.height, getattr(self, '_scene_viewport', None) or (self.width, self.height))
+
     def _draw_scene(self):
         t_start = time.perf_counter()
         if self.t_prev is not None: self.spacings.append(t_start - self.t_prev)
@@ -952,7 +967,7 @@ class Game(FullScreenMixin, CameraMixin, FieldMixin, BattleMixin, TitleMixin, St
         gl.glEnable(gl.GL_DEPTH_TEST); gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         self.post.game_sepia = bool(getattr(e, 'screen_sepia', False))          # DQ V / VI: Sepia image effect of the scene camera (the interface is drawn after, untouched)
-        gl.glViewport(0, 0, *self.post.begin(background))          # scene drawn off-screen if a display setting requires it (MSAA antialiasing, sharpness, brightness: postfx.py); otherwise directly into the window
+        self._scene_viewport = self.post.begin(background); gl.glViewport(0, 0, *self._scene_viewport)          # scene drawn off-screen if a display setting requires it (MSAA antialiasing, sharpness, brightness: postfx.py); otherwise directly into the window
         if not field and not is_battle and e.part != ENGINE.PART_BESTIARY and background_gradient(e.top_background, e.bottom_background): self._paint_background_gradient(e.top_background, e.bottom_background)       # town: BackColor gradient background (not the bestiary's: the town's sky left over, see backdrop.py)
         if not field and not is_battle: self._draw_backdrop(e, background, background_gradient(e.top_background, e.bottom_background))          # casino, bestiary on a black background: the blurred scenery of the place just left
         aspect = self.width / max(1, self.height)
@@ -1093,11 +1108,14 @@ class Game(FullScreenMixin, CameraMixin, FieldMixin, BattleMixin, TitleMixin, St
             self.prog['cutoff'] = 0.05; self.prog['crisp'] = 1.0; self.prog['tsize'] = (1.0, 1.0)
             gl.glDisable(gl.GL_CULL_FACE); gl.glDepthMask(gl.GL_FALSE)
             self._linked_domain = None
+            clip = self._phone_clip() if e.part == ENGINE.PART_BESTIARY else None          # the bestiary's monster: cut at the phone's screen edges, as the game shows it (a large one goes past the parchment)
+            if clip: gl.glEnable(gl.GL_SCISSOR_TEST); gl.glScissor(*clip)
             for tex, tw, th, vl, shader, hd in self._battle_meshes(e, np.column_stack(cam3d), True):
                 self.prog['crisp'] = 0.0 if hd else (1.0 if self.smoothing else 2.0)
                 if shader == 3: gl.glDisable(gl.GL_DEPTH_TEST)
                 self.prog['tsize'] = (float(tw), float(th)); self._paint(tex, vl)
                 if shader == 3: gl.glEnable(gl.GL_DEPTH_TEST)
+            if clip: gl.glDisable(gl.GL_SCISSOR_TEST)
             gl.glDepthMask(gl.GL_TRUE); self.prog['crisp'] = 0.0; self.prog['tsize'] = (1.0, 1.0)
         if (field or (not is_battle and cam3d is not None)) and getattr(e, 'particles', None) is not None: self._paint_particles(e, field)          # DQ V / VI particles (snow, petals, leaves): Transparent+400, after the characters and mesh effects
         if icons:                                                            # icon bubbles (the item that rises out of a chest, a jar, a wardrobe; the "!" above a character): Custom/Riseup is

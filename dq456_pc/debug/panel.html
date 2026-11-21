@@ -23,6 +23,7 @@ pre { background: #101216; padding: 8px; overflow: auto; max-height: 60vh; }
 .grid { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; }
 .row { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
 .active { background: #26402b; }
+.tech { font-style: italic; color: #8a93a3; } .allmax { margin-left: 8px; }
 .num { display: inline-flex; gap: 2px; align-items: center; } .num .mm { padding: 3px 5px; font-size: 11px; }
 </style>
 </head>
@@ -52,19 +53,19 @@ pre { background: #101216; padding: 8px; overflow: auto; max-height: 60vh; }
     <p class="dim" id="sc_fight_note"></p><div class="row"><button id="sc_backdrop_go"></button><span class="dim" id="sc_backdrop_cur"></span></div>
   </section>
   <section id="t_party">
-    <h4 id="h_members"></h4><div id="pa_members"></div>
+    <h4><span id="h_members"></span><button class="allmax" data-allmax="levels"></button></h4><div id="pa_members"></div>
     <div class="row"><select id="pa_char"></select><button id="pa_join"></button></div>
-    <h4 id="h_jobs"></h4><div id="pa_jobs"></div>
-    <h4 id="h_values"></h4><div id="pa_values" class="grid"></div>
+    <h4 id="h_jobs_box"><span id="h_jobs"></span><button class="allmax" data-allmax="jobs"></button></h4><div id="pa_jobs"></div>
+    <h4><span id="h_values"></span><button class="allmax" data-allmax="stats"></button></h4><div id="pa_values" class="grid"></div>
   </section>
   <section id="t_items">
     <h4 id="h_give"></h4><div class="row"><input id="sc_item_find" size="16"><select id="sc_item"></select><span id="sc_count_box"></span><button id="sc_give"></button></div><p class="dim" id="sc_items_note"></p>
     <div class="row"><button id="pa_items"></button><span class="dim" id="pa_items_note"></span></div>
-    <h4 id="h_money"></h4><div id="it_money" class="grid"></div>
+    <h4><span id="h_money"></span><button class="allmax" data-allmax="money"></button></h4><div id="it_money" class="grid"></div>
   </section>
   <section id="t_activities">
     <h4 id="h_mini"></h4><div class="row" id="sc_minigames"></div>
-    <h4 id="h_extras"></h4><div id="pa_extras"></div>
+    <h4 id="h_extras_box"><span id="h_extras"></span><button class="allmax" data-allmax="extras"></button></h4><div id="pa_extras"></div>
   </section>
   <section id="t_book">
     <div class="row"><button id="bk_all"></button><button id="bk_none"></button><input id="bk_find" size="18"><span class="dim" id="bk_count"></span></div>
@@ -95,7 +96,7 @@ const T = {
        save: 'Sauver', load: 'Charger', empty: 'vide', paused: 'EN PAUSE', replay: 'REJEU', frame: 'image', part: 'partie', map: 'carte', flags: 'drapeaux',
        fade: 'fondu avant', bfade: 'fondu arrière', menu: 'menu actif', message: 'message', pace: 'rythme', sprites: 'Personnages', meshes: 'Maillages', camera: 'caméra',
        port: 'port', type: 'type', cursor: 'curseur', buttons: 'boutons', lines: 'lignes', yes: 'oui', no: 'non', confirm_write: 'Écrire dans la mémoire du moteur ?', loadq: 'Charger cette sauvegarde d\'état ?',
-       places: 'Lieux', story: 'Histoire', fights: 'Combats', activities: 'Activités', min: 'Min', max: 'Max', money: 'Argent', give_h: 'Donner un objet', playstats: 'Temps de jeu et statistiques',
+       allmax: 'Tout au max', places: 'Lieux', story: 'Histoire', fights: 'Combats', activities: 'Activités', min: 'Min', max: 'Max', money: 'Argent', give_h: 'Donner un objet', playstats: 'Temps de jeu et statistiques',
        scene_maps: 'Cartes de scène (sans entrée : le héros arrive à l\'origine de la carte)', map_note: 'Le héros arrive par l\'entrée principale de la carte (celle qui vient du monde, sinon de la carte la plus proche), comme par une porte : la carte charge ses personnages, sa musique et ses effets.',
        world_h: 'Carte du monde', maph: 'Carte', go: 'Y aller', world: 'Y aller', world_here: 'devant le lieu actuel', world_n: 'Monde', current: 'carte actuelle', step: 'Étape de l\'histoire', apply: 'Appliquer', step_go: 'aller sur sa carte',
        step_note: 'Remet les interrupteurs globaux et l\'équipe de cette étape ; objets, niveaux et or ne changent pas. Le héros arrive par l\'entrée principale de la carte.',
@@ -122,7 +123,7 @@ const T = {
        save: 'Save', load: 'Load', empty: 'empty', paused: 'PAUSED', replay: 'REPLAY', frame: 'frame', part: 'part', map: 'map', flags: 'flags',
        fade: 'front fade', bfade: 'back fade', menu: 'active menu', message: 'message', pace: 'pace', sprites: 'Characters', meshes: 'Meshes', camera: 'camera',
        port: 'port', type: 'type', cursor: 'cursor', buttons: 'buttons', lines: 'lines', yes: 'yes', no: 'no', confirm_write: 'Write into the engine\'s memory?', loadq: 'Load this savestate?',
-       places: 'Places', story: 'Story', fights: 'Fights', activities: 'Activities', min: 'Min', max: 'Max', money: 'Money', give_h: 'Give an item', playstats: 'Play time and statistics',
+       allmax: 'All max', places: 'Places', story: 'Story', fights: 'Fights', activities: 'Activities', min: 'Min', max: 'Max', money: 'Money', give_h: 'Give an item', playstats: 'Play time and statistics',
        scene_maps: 'Scene maps (no entrance: the hero arrives at the map\'s origin)', map_note: 'The hero arrives through the map\'s main entrance (the one from the world map, otherwise from the nearest map), as through a door: the map loads its characters, its music and its effects.',
        world_h: 'World map', maph: 'Map', go: 'Go', world: 'Go', world_here: 'in front of the current place', world_n: 'World', current: 'current map', step: 'Story step', apply: 'Apply', step_go: 'go to its map',
        step_note: 'Puts back the global switches and the party of that step; items, levels and gold do not change. The hero arrives through the map\'s main entrance.',
@@ -148,7 +149,9 @@ let L = T.en, lang = null, tab = 't_state', last = null, pkSince = -1, pkRows = 
 const $ = id => document.getElementById(id);
 const TABS = ['state', 'places', 'story', 'fights', 'party', 'items', 'activities', 'book', 'texts', 'states', 'packets', 'menus', 'objects', 'memory'];
 const esc = s => String(s).replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
-const LIMITS = {item_count: [1, 99], switch: [0, 1023]};          // (the catalog's, once read)
+const LIMITS = {item_count: [1, 99], switch: [0, 1023]};
+const it = s => String(s).replace(/[a-z]/g, c => String.fromCodePoint(0x1D622 + c.charCodeAt(0) - 97)).replace(/[A-Z]/g, c => String.fromCodePoint(0x1D608 + c.charCodeAt(0) - 65));          // a technical name in a list: italic letters (an option cannot style a part of its text)
+const tech = s => `<i class="tech">${esc(s)}</i>`;          // a technical name elsewhere (map, file, scenery, number)          // (the catalog's, once read)
 const width = n => String(Math.abs(n)).length + (n < 0 ? 1 : 0);
 function mm(id, v, apply, label) { return `<button class="mm" data-for="${id}" data-v="${v}"${apply ? ` data-apply="${apply}"` : ''}>${label}</button>`; }
 function num(id, v, lim, apply) {          // a number field kept within [least, most] (and their length), with Min and Max (that apply at once where the field has its own button)
@@ -188,6 +191,7 @@ function texts() {
   $('sc_set').innerHTML = ['global', 'area', 'local'].map(k => `<option value="${k}">${L['sw_' + k]}</option>`).join(''); $('sc_item_find').placeholder = L.find; $('bk_find').placeholder = L.find; $('tx_find').placeholder = L.find;
   $('sc_count_box').innerHTML = num('sc_count', $('sc_count') ? $('sc_count').value : 1, LIMITS.item_count); $('sc_n_box').innerHTML = num('sc_n', $('sc_n') ? $('sc_n').value : '', LIMITS.switch);
   $('tx_n_box').innerHTML = num('tx_n', $('tx_n') ? $('tx_n').value : 1, [1, 50]); $('mem_len_box').innerHTML = num('mem_len', $('mem_len') ? $('mem_len').value : 256, [1, 4096]);
+  for (const b of document.querySelectorAll('[data-allmax]')) b.textContent = L.allmax;
   $('b_report').textContent = L.report; $('l_follow').textContent = L.follow; $('mem_read').textContent = L.read; $('mem_write').textContent = L.write; $('h_log').textContent = L.log;
 }
 function show() { for (const s of document.querySelectorAll('section')) s.classList.toggle('sel', s.id === tab); }
@@ -244,37 +248,37 @@ let catalog = null;
 async function loadCatalog() {
   catalog = await get('/api/catalog'); Object.assign(LIMITS, catalog.limits || {}); texts();
   const placeName = Object.assign({}, catalog.places || {});          // a map's label: its place (the one it leads out to on the world map), else its first story step's
-  const scene = new Set(catalog.no_entrance || []), mapOpt = m => `<option value="${m}">${m}${placeName[m] ? ' — ' + esc(placeName[m]) : ''}</option>`;
+  const scene = new Set(catalog.no_entrance || []), mapOpt = m => `<option value="${m}">${it(m)}${placeName[m] ? ' — ' + esc(placeName[m]) : ''}</option>`;
   $('sc_map').innerHTML = catalog.maps.filter(m => !scene.has(m)).map(mapOpt).join('') + `<optgroup label="${esc(L.scene_maps)}">` + catalog.maps.filter(m => scene.has(m)).map(mapOpt).join('') + '</optgroup>';
   if (catalog.map && catalog.maps.includes(catalog.map)) $('sc_map').value = catalog.map;
   $('sc_world_at').innerHTML = `<option value="">${esc(L.world_here)}</option>` + (catalog.worlds || []).map(([t, places]) =>          // each world map of the game, the places on it
-    `<optgroup label="${esc(L.world_n)} ${t + 1}">` + places.map(([k, p, m]) => `<option value="${k}">${esc(p)} (${esc(m)})</option>`).join('') + '</optgroup>').join('');
+    `<optgroup label="${esc(L.world_n)} ${t + 1}">` + places.map(([k, p, m]) => `<option value="${k}">${esc(p)} (${it(m)})</option>`).join('') + '</optgroup>').join('');
   renderItems();
   const sea = new Set(catalog.sea_rows || []);
-  $('sc_group').innerHTML = `<optgroup label="${L.bosses}">` + catalog.bosses.map(([row, mons, map]) => `<option value="${row}">${esc(mons.join(', '))} — ${row}${map ? ' — ' + esc(placeName[map] || map) : ''}</option>`).join('') + '</optgroup>' +
-    `<optgroup label="${L.groups}">` + (catalog.encounters || []).map(([row, mons]) => `<option value="${row}">${row} — ${esc(mons.join(', '))}${sea.has(row) ? ' (' + L.sea + ')' : ''}</option>`).join('') + '</optgroup>';
-  const bd = catalog.backdrops || [], opt = b => `<option value="${b[0]}">${esc(backdropLabel(b))} (${b[0]})</option>`;
+  $('sc_group').innerHTML = `<optgroup label="${L.bosses}">` + catalog.bosses.map(([row, mons, map]) => `<option value="${row}">${esc(mons.join(', '))} — #${row}${map ? ' — ' + (placeName[map] ? esc(placeName[map]) : it(map)) : ''}</option>`).join('') + '</optgroup>' +
+    `<optgroup label="${L.groups}">` + (catalog.encounters || []).map(([row, mons]) => `<option value="${row}">#${row} — ${esc(mons.join(', '))}${sea.has(row) ? ' (' + L.sea + ')' : ''}</option>`).join('') + '</optgroup>';
+  const bd = catalog.backdrops || [], opt = b => `<option value="${b[0]}">${esc(backdropLabel(b))} (${it(b[0])})</option>`;
   $('sc_backdrop').innerHTML = `<option value="">${L.backdrop_own}</option><optgroup label="${L.backdrop_terrains}">` + bd.filter(b => b[1]).map(opt).join('') +
     `</optgroup><optgroup label="${L.backdrop_places}">` + bd.filter(b => !b[1]).map(opt).join('') + '</optgroup>';
   backdropLabel.byName = Object.fromEntries(bd.map(b => [b[0], b])); $('sc_group').onchange(); showBackdrop(catalog.backdrop);
   $('sc_minigames').innerHTML = (catalog.minigames || []).map(m => `<button data-mg="${m}">${L['mg_' + m] || m}</button>`).join('') + `<button id="sc_book">${L.book}</button>`;
   for (const b of document.querySelectorAll('[data-mg]')) b.onclick = () => cmd({cmd: 'minigame', id: b.dataset.mg});
   $('sc_book').onclick = () => cmd({cmd: 'book'});
-  $('sc_step').innerHTML = catalog.steps.map(([n, name, map]) => `<option value="${n}">${n}${name ? ' — ' + esc(name) : ''}${map ? ' — ' + map : ''}</option>`).join('');
+  $('sc_step').innerHTML = catalog.steps.map(([n, name, map]) => `<option value="${n}">${n}${name ? ' — ' + esc(name) : ''}${map ? ' — ' + it(map) : ''}</option>`).join('');
   renderFlags(catalog);
 }
 function backdropLabel(b) {          // [name, terrain, number, time, places] -> "Plaine — nuit", "Château de X, Tour Y — jour"
   const [n, t, num, time, places] = b; const what = t ? (L['tr_' + t] || t) + (num ? ' ' + num : '') : (places.length ? places.join(', ') : L.unknown_place);
   return what + (time ? ' — ' + (L['time_' + time] || time) : '');
 }
-function showBackdrop(n) { const b = n && backdropLabel.byName && backdropLabel.byName[n]; $('sc_backdrop_cur').textContent = n ? L.backdrop_all.replace('%s', b ? backdropLabel(b) + ' (' + n + ')' : n) : ''; }
+function showBackdrop(n) { const b = n && backdropLabel.byName && backdropLabel.byName[n]; $('sc_backdrop_cur').innerHTML = n ? esc(L.backdrop_all).replace('%s', (b ? esc(backdropLabel(b)) + ' ' : '') + tech(n)) : ''; }
 function renderItems() {
   const f = $('sc_item_find').value.trim().toLowerCase(), keep = $('sc_item').value;
-  $('sc_item').innerHTML = (catalog.items || []).filter(([n, name]) => !f || name.toLowerCase().includes(f) || String(n) === f).map(([n, name]) => `<option value="${n}">${esc(name)} — ${n}</option>`).join('');
+  $('sc_item').innerHTML = (catalog.items || []).filter(([n, name]) => !f || name.toLowerCase().includes(f) || String(n) === f).map(([n, name]) => `<option value="${n}">${esc(name)} — #${n}</option>`).join('');
   if (keep) $('sc_item').value = keep;
 }
 function renderFlags(c) {
-  $('sc_cur').textContent = L.current + ' : ' + (c.map || '-');
+  $('sc_cur').innerHTML = esc(L.current) + ' : ' + (c.map ? tech(c.map) : '-');
   $('sc_flags').innerHTML = ['global', 'area', 'local'].map(k => `<p><span class="dim">${L['sw_' + k]} (${(c.flags[k] || []).length})</span> ` +
     (c.flags[k] || []).map(n => `<a data-set="${k}" data-n="${n}" style="cursor:pointer">${n}</a>`).join(' ') + '</p>').join('');
   for (const a of document.querySelectorAll('#sc_flags a')) a.onclick = () => cmd({cmd: 'flag', set: a.dataset.set, n: +a.dataset.n, on: false}).then(refreshScenes);
@@ -307,7 +311,7 @@ async function refreshParty(force) {
   refreshExtras(force);
   const p = await get('/api/party'); const key = JSON.stringify(p); if (!force && key === partyKey) return; partyKey = key; party = p;
   $('pa_members').innerHTML = `<table><tr><th></th><th>${L.level}</th><th></th><th>${L.exp}</th><th></th><th></th></tr>` + p.members.map(m =>
-    `<tr><td>${esc(m.name)} <span class="dim">#${m.id}</span></td>` + (m.guest ? `<td colspan="4" class="dim">${L.guest}</td>` :
+    `<tr><td>${esc(m.name)} <span class="tech">#${m.id}</span></td>` + (m.guest ? `<td colspan="4" class="dim">${L.guest}</td>` :
     `<td>${num('pl_' + m.id, m.level, p.limits.level, `[data-lv='${m.id}']`)}</td><td><button data-lv="${m.id}">${L.set}</button></td>` +
     `<td>${num('px_' + m.id, m.exp, p.limits.exp, `[data-xp='${m.id}']`)}</td><td><button data-xp="${m.id}">${L.set}</button></td>`) + `<td><button data-out="${m.id}">${L.remove}</button></td></tr>`).join('') + '</table>';
   const inside = new Set(p.members.map(m => m.id));
@@ -326,10 +330,10 @@ async function refreshExtras(force) {
   const x = await get('/api/extras'); if (x.error) return; const key = JSON.stringify(x); if (!force && key === extrasKey) return; extrasKey = key;
   const box = (s, i, v, label) => s.kind === 'bits' ? `<label class="row" style="margin:0 8px 0 0"><input type="checkbox" data-ex="${s.id}" data-i="${i}"${v ? ' checked' : ''}> ${label}</label>`
     : `<span class="row" style="margin:0 8px 0 0">${label} ${num(`ex_${s.id}_${i}`, v, [s.min ?? 0, s.max], `[data-exset='${s.id}'][data-i='${i}']`)}<button data-exset="${s.id}" data-i="${i}">${L.set}</button></span>`;
-  $('h_extras').style.display = x.systems.length ? '' : 'none';
+  $('h_extras_box').style.display = x.systems.length ? '' : 'none';
   $('pa_extras').innerHTML = x.systems.map(s => `<div class="row"><span class="dim">${esc(L['ex_' + s.id] || s.id)}</span> ` +
     (s.kind === 'number' ? box(s, 0, s.value, '') : s.items.map(([i, v]) => box(s, i, v, `${s.id === 'touch' ? L.place : L.course} ${i + 1}`)).join('')) + '</div>').join('');
-  $('h_jobs').style.display = x.jobs ? '' : 'none';
+  $('h_jobs_box').style.display = x.jobs ? '' : 'none';
   $('pa_jobs').innerHTML = x.jobs ? `<table><tr><th></th>${x.jobs.jobs.map(([j, n]) => `<th title="${esc(n)}">${esc(n.slice(0, 7))}</th>`).join('')}</tr>` + x.jobs.members.map(m =>
     `<tr><td>${esc(m.name)}</td>${m.levels.map((lv, k) => `<td><input size="1" maxlength="1" class="nf" data-lo="0" data-hi="${x.jobs.max ?? 8}" data-job="${k + 1}" data-m="${m.id}" value="${lv}"></td>`).join('')}` +
     `<td><button data-jobs="${m.id}" data-v="0">${L.min}</button><button data-jobs="${m.id}" data-v="${x.jobs.max ?? 8}">${L.max}</button></td></tr>`).join('') + '</table>' : '';
@@ -341,6 +345,21 @@ async function refreshExtras(force) {
     refreshExtras(true);
   };
 }
+async function allMax(kind) {          // every value of a section at its most (the game's own limits)
+  if (kind === 'levels' && party) for (const m of party.members) { if (!m.guest) await cmd({cmd: 'party_level', id: m.id, level: party.limits.level[1]}); }
+  if ((kind === 'stats' || kind === 'money') && party) for (const k of Object.keys(party.values)) { if (MONEY.has(k) === (kind === 'money') && party.limits[k]) await cmd({cmd: 'value', key: k, value: party.limits[k][1]}); }
+  if (kind === 'jobs' || kind === 'extras') {
+    const x = await get('/api/extras');
+    if (kind === 'jobs' && x.jobs) for (const m of x.jobs.members) for (let j = 1; j <= m.levels.length; j++) await cmd({cmd: 'job_level', id: m.id, job: j, level: x.jobs.max ?? 8});
+    if (kind === 'extras') for (const s of x.systems) {
+      if (s.kind === 'number') await cmd({cmd: 'extra_set', id: s.id, i: 0, value: s.max});
+      else for (const [i] of s.items) await cmd({cmd: 'extra_set', id: s.id, i, value: s.kind === 'bits' ? 1 : s.max});
+    }
+    return refreshExtras(true);
+  }
+  return refreshParty(true);
+}
+for (const b of document.querySelectorAll('[data-allmax]')) b.onclick = () => allMax(b.dataset.allmax);
 $('pa_join').onclick = () => cmd({cmd: 'party_join', id: +$('pa_char').value}).then(() => setTimeout(() => refreshParty(true), 300));
 $('pa_items').onclick = () => cmd({cmd: 'items_max'});
 let bookKey = '';
@@ -350,7 +369,7 @@ async function refreshBook(force) {
   $('bk_count').textContent = L.bk_count.replace('%s', b.seen).replace('%s', b.size);
   const f = $('bk_find').value.trim().toLowerCase();
   $('bk_pages').innerHTML = `<table><tr><th>#</th><th></th><th>${L.bk_seen}</th><th>${L.bk_defeated}</th><th>${L.bk_items}</th></tr>` + b.pages.filter(([p, m, name]) => !f || name.toLowerCase().includes(f) || String(p + 1) === f).map(([p, m, name, seen, d, it]) =>
-    `<tr><td class="dim">${p + 1}</td><td>${esc(name)} <span class="dim">#${m}</span></td><td><input type="checkbox" data-bk="${p}"${seen ? ' checked' : ''}></td><td>${d}</td><td>${it}</td></tr>`).join('') + '</table>';
+    `<tr><td class="tech">${p + 1}</td><td>${esc(name)} <span class="tech">#${m}</span></td><td><input type="checkbox" data-bk="${p}"${seen ? ' checked' : ''}></td><td>${d}</td><td>${it}</td></tr>`).join('') + '</table>';
   for (const c of document.querySelectorAll('[data-bk]')) c.onchange = () => cmd({cmd: 'book_seen', page: +c.dataset.bk, on: c.checked}).then(() => refreshBook(true));
 }
 $('bk_all').onclick = () => cmd({cmd: 'book_all', on: true}).then(() => refreshBook(true));
@@ -360,7 +379,7 @@ let txFiles = null, txFile = null;
 async function refreshTexts() {
   if (txFiles) return;
   const r = await get('/api/texts'); if (r.error) { $('msg').textContent = r.error; return; } txFiles = r.files;
-  $('tx_file').innerHTML = txFiles.map(([f, first, n]) => `<option value="${f}">${f} — ${n}</option>`).join('');
+  $('tx_file').innerHTML = txFiles.map(([f, first, n]) => `<option value="${f}">${it(f)} — ${n}</option>`).join('');
   await loadTextFile($('tx_file').value);
 }
 async function loadTextFile(name) {

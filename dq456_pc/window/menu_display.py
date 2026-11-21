@@ -541,15 +541,16 @@ class MenusMixin:
         ref = self._preview_window('WorldLargeMap') or self._preview_window('CityMap')
         return ref.menu_border(0.0, False) if ref is not None else None
 
-    def _map_anchor(self, name_str, wnd, s2, cx, cy):
+    def _map_anchor(self, name_str, wnd, s2, cx, cy, target=None):
         """(dx, dz) in interface units from a window's game place to its PC default, or (0, 0): the map overviews (CityMap: town, WorldLargeMap: world, ShopMap: the town's shops)
-        all move by the shift that puts the reference frame (_map_reference) at the center of the screen (the phone had them at the top of its portrait screen); their two buttons
+        all move by the shift that puts the reference frame (_map_reference) at `target` (pixels; the center of the screen without one; the phone had them at the top of its portrait screen); their two buttons
         (MapButton: map mode, back) go just right of that frame's bottom right corner, bottoms aligned (under it, right edges aligned, when there is no room on the right: portrait).
         The player's settings of the interface editor apply from there. `cx`, `cy`: the window's frame of reference before the player's shift (pixels)."""
         if name_str not in MAP_WINDOWS and name_str != MAP_BUTTONS: return 0.0, 0.0
         mb = self._map_reference()
         if not mb: return 0.0, 0.0
-        mx = (self.width / 2.0 - cx) / s2 - (mb[0] + mb[2]) / 2.0; mz = (self.height / 2.0 - cy) / s2 - (mb[1] + mb[3]) / 2.0          # the reference frame centered on the screen
+        tx, ty = target or (self.width / 2.0, self.height / 2.0)
+        mx = (tx - cx) / s2 - (mb[0] + mb[2]) / 2.0; mz = (ty - cy) / s2 - (mb[1] + mb[3]) / 2.0          # the reference frame centered on the target
         if name_str in MAP_WINDOWS: return mx, mz
         bb = wnd.menu_border(0.0, False)
         if not bb: return 0.0, 0.0
@@ -559,13 +560,12 @@ class MenusMixin:
 
     def _ui_place(self, name_str, wnd, mode, s, v):
         """Frame of reference (cx, cy, s) of a game window with the player's settings v (size, shift), from its PC default place (_map_anchor)."""
-        cx, cy, s2 = self._ui_custom(mode, s, v)
-        mb = self._map_reference() if name_str in MAP_WINDOWS or name_str == MAP_BUTTONS else None
-        if mb:                                                                       # (a map enlarged at most to what the screen holds: its buttons the same)
-            fit = SQUARE_FIT * min(self.height / max(1.0, mb[3] - mb[1]), self.width / max(1.0, mb[2] - mb[0]))
-            if s2 > fit: cy = {'bottom': 400.0 * fit, 'top': self.height - 400.0 * fit}.get(mode, self.height / 2.0) + float(v[2]) * self.height; s2 = fit
-        dx, dz = self._map_anchor(name_str, wnd, s2, cx - float(v[1]) * self.width, cy - float(v[2]) * self.height)          # (the default place is computed without the player's shift, which then applies)
-        return cx + dx * s2, cy + dz * s2, s2
+        if name_str == BOOK: return self._book_place(v=v)
+        if name_str in MAP_WINDOWS or name_str == MAP_BUTTONS:                       # (the maps where the book's parchment is, as large: square_frame; their buttons beside them)
+            cx, cy, s2 = self.square_frame(float(v[0]) / RG.SMALL_SCREEN_SCALE)
+            dx, dz = self._map_anchor(name_str, wnd, s2, cx, cy, (cx, cy))
+            return cx + dx * s2 + float(v[1]) * self.width, cy + dz * s2 + float(v[2]) * self.height, s2
+        return self._ui_custom(mode, s, v)
 
     def _update_preview_canvas(self, wnd):
         if getattr(self, '_trial', None) is None: self.new_sample()
@@ -657,15 +657,46 @@ class MenusMixin:
         return any((self._type_name(self.ui_g.f[p].typ) or '') in MAP_WINDOWS or getattr(self.ui_g.f[p], 'pictures', None) for p in ports)
 
     def book_frame(self):
-        """(cx, cy, s) of the bestiary's window: its parchment and its monster follow it (enlarged, kept on the screen); the interface column before it is shown."""
-        return getattr(self, 'ui_book_tf', None) or self._ui_reference()
+        """(cx, cy, s) of the bestiary's window: its parchment and its monster follow it. Its last place while the bestiary lasts (its window gone as it
+        closes: no jump), its default place before it is shown, the interface column elsewhere."""
+        tf = getattr(self, 'ui_book_tf', None)
+        if tf is not None: return tf
+        if self.engine.state.part == ENGINE.PART_BESTIARY: return self._book_place()
+        return self._ui_reference()
 
-    def _book_place(self, mode, s, v):
-        """The bestiary's frame: its size (v, BOOK_SCALE by default) around its screen edge, at most what keeps its parchment's top on the screen (SQUARE_FIT of its height)."""
-        cx, cy, s2 = self._ui_custom(mode, s, v)
-        if mode != 'bottom': return cx, cy, s2
-        fit = SQUARE_FIT * float(self.height) / (400.0 + BOOK_TOP)
-        return (cx, cy, s2) if s2 <= fit else (cx, cy - 400.0 * (s2 - fit), fit)
+    def square_frame(self, factor=1.0, shift=(0.0, 0.0)):
+        """(cx, cy, s) of the square screens: the bestiary as it opens (the game's column a quarter larger at the windows' zoom, at most what keeps its parchment
+        on the screen, SQUARE_FIT of its height and width; its page bar on the bottom edge: cy = 400 units up), whatever the other windows do; the maps
+        and the shop pictures in its parchment's place (centered on cy). `factor`, `shift`: the player's settings (interface editor)."""
+        H, W = float(self.height), float(self.width)
+        s = min(H / 800.0 * UI_ZOOM * RG.BOOK_SCALE, SQUARE_FIT * H / (400.0 + BOOK_TOP), SQUARE_FIT * W / 450.0) * float(factor)
+        cx = {'right': W - 225.0 * s, 'left': 225.0 * s}.get(getattr(self.args, 'ui_pos', 'center'), W / 2.0)
+        return cx + float(shift[0]) * W, 400.0 * s + float(shift[1]) * H, s
+
+    def _book_place(self, mode=None, s=None, v=None):
+        """The bestiary's frame: square_frame with the player's settings (v; BOOK_SCALE by default)."""
+        v = v or self.reg['interface_windows'].get(BOOK) or RG.default_window(BOOK)
+        return self.square_frame(float(v[0]) / RG.BOOK_SCALE, (v[1], v[2]))
+
+    def _square_bottom(self, entries, names, pictures):
+        """(bottom edge of the square screen shown, top edge of the interface under it) in pixels, or None: the book's parchment and its page bar; a map;
+        a shop picture and the windows under it (the screen's bottom edge without one)."""
+        def px(tf, z): return tf[1] + z * tf[2]
+        for _, p in entries:
+            wnd, tf = self.ui_g.f[p], self.ui_tf.get(p)
+            if tf is None: continue
+            if names[p] == BOOK:
+                low = [r[3] for r in wnd.rects() if r[3] < -BOOK_TOP]
+                return px(tf, -BOOK_TOP), (px(tf, max(low)) if low else 0.0)
+        sq = None
+        for _, p in entries:
+            tf = self.ui_tf.get(p); e = self.ui_g.f[p].extent()
+            if tf is None or not e: continue
+            if names[p] in MAP_WINDOWS or p in pictures: sq = px(tf, e[0]) if sq is None else min(sq, px(tf, e[0]))
+        if sq is None: return None
+        under = [px(self.ui_tf[p], self.ui_g.f[p].extent()[1]) for _, p in entries if p in self.ui_tf and p not in pictures and names[p] not in MAP_WINDOWS
+                 and names[p] != MAP_BUTTONS and p not in self.ui_followers and self.ui_g.f[p].extent() and px(self.ui_tf[p], self.ui_g.f[p].extent()[1]) <= sq + 1.0]
+        return sq, max(under) if under else 0.0
 
     def _zones(self, port):
         """Touch zones of a port's window: [(number, gamepad, x0, y0, x1, y1, depth, element identifier)] in pixels."""
@@ -770,12 +801,11 @@ class MenusMixin:
                     wnd.selected_node = self.hover_node[1] if self.hover_node and self.hover_node[0] == p else (-1 if self.hover_node else None)       # mouse: only the pointed element (-1: window not hovered, nothing is lit by number)
                 wnd.cursor_nodes = self._cursor_nodes(p, wnd) if p == active and not self.hover_node and not self.press_state else ()
                 if p in self.ui_followers: topmost.append(wnd)
-                elif p in pictures:                                                # shop pictures: centered, one and a half times the game's size (SMALL_SCREEN_SCALE), unless the player placed them
+                elif p in pictures:                                                # shop pictures: in the book's parchment's place, as large as it allows (square_frame), unless the player placed them
                     if p not in custom:
-                        c = wnd.center_visible() or (0.0, 0.0); sp = s * RG.SMALL_SCREEN_SCALE; ex = wnd.extent(); exx = wnd.extent_x() if hasattr(wnd, 'extent_x') else None
-                        if ex and ex[1] > ex[0]: sp = min(sp, SQUARE_FIT * H / (ex[1] - ex[0]))          # (no larger than the screen)
-                        if exx and exx[1] > exx[0]: sp = min(sp, SQUARE_FIT * self.width / (exx[1] - exx[0]))
-                        self.ui_tf[p] = (cx - c[0] * sp, H / 2.0 - c[1] * sp, sp)
+                        qx, qy, qs = self.square_frame(); c = wnd.center_visible() or (0.0, 0.0); ex = wnd.extent(); exx = wnd.extent_x() if hasattr(wnd, 'extent_x') else None
+                        sp = min(qs * 450.0 / (exx[1] - exx[0]) if exx and exx[1] > exx[0] else qs, qs * 2.0 * BOOK_TOP / (ex[1] - ex[0]) if ex and ex[1] > ex[0] else qs)
+                        self.ui_tf[p] = (qx - c[0] * sp, qy - c[1] * sp, sp)
                     backdrop.append((self.ui_tf[p], wnd))
                 elif p not in custom: bottom.setdefault(self.ui_tf[p][1], []).append(wnd)
             for tf, wnd in backdrop:                             # shop pictures: under the dialogue box and the menus (the game draws its message and its windows over the picture)
@@ -797,8 +827,19 @@ class MenusMixin:
                 if self._menu_hidden(self.ui_g.f[p].typ) or p in pictures: continue          # (a picture the player placed: drawn under the dialogue box, above)
                 if self.ui_g.f[p].typ in CENTERED_WINDOWS: self._initial_border(self.ui_g.f[p], tf[0], tf[1], tf[2], True)
                 self.ui_render.draw_all([self.ui_g.f[p]], tf[0], tf[1], tf[2], (self.width, self.height))
-            if square: draw_messages()
-            self.ui_book_tf = next((self.ui_tf[p] for _, p in entries if names[p] == BOOK), None)          # (the bestiary's parchment and monster follow it: book_frame)
+            if square:                                                                # (its message centered between it and the interface under it: the book's page bar, a shop's lists, the screen's edge)
+                edges = self._square_bottom(entries, names, pictures); e = self.ui_msg.extent() if edges else None
+                if e:
+                    mtf = tf_msg or (cx, ref_frame('msg')[0], s); want = (edges[0] + edges[1]) / 2.0
+                    new = (want - mtf[1]) / mtf[2] - (e[0] + e[1]) / 2.0
+                    new = min(new, (H - mtf[1]) / mtf[2] - e[1]); new = max(new, -mtf[1] / mtf[2] - e[0])          # (on the screen)
+                    delta = new - dz; dz = self.ui_dz = new
+                    for p in list(self.ui_dzp): self.ui_dzp[p] += delta
+                    for p in list(yes_no):
+                        t2 = yes_no[p]; yes_no[p] = (t2[0], t2[1] + delta * mtf[2], t2[2]); self.ui_tf[p] = (t2[0], self.ui_tf[p][1] + delta * mtf[2], t2[2])
+                draw_messages()
+            book = next((self.ui_tf[p] for _, p in entries if names[p] == BOOK), None)
+            if book is not None or eng.state.part != ENGINE.PART_BESTIARY: self.ui_book_tf = book          # (the bestiary's parchment and monster follow it, book_frame; kept while the book closes)
             self._anchor_battle_speed(entries, msg, dz, s, cx, ref_frame, tf_msg)
         wins = [(p, f) for p, f in eng.ui.visible_ones() if not (self.ui_g and p in self.ui_g.f)]
         if not wins: return
