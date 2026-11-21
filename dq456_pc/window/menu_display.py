@@ -332,7 +332,7 @@ class MenusMixin:
                 action = next((b for b, pd, *_ in (wnd.buttons() if wnd else []) if pd & 0x800), None)          # "Action" of the bestiary sheet (gamepad 0x800): the only window that has one
                 if action is not None and not f.get('grid'): self.direct_keys |= 0x800; self.sound.play_sfx(SFX_BUTTON)          # (a direct button: added to the game's keys, see DIRECT_BUTTONS)
                 else: eng.send_menu(port, 1, -1, 0x10); self.menu_to_release = port; self.sound.play_sfx(SFX_BUTTON)
-            elif decl & ENGINE.B and (self._type_name(f.get('type')) or '').startswith('Make_ScopeBack'): self.direct_keys |= 0x200          # (its back button: a direct button, see keyboard_mouse.DIRECT_BUTTONS)
+            elif decl & ENGINE.B and (self._type_name(f.get('type')) or '').replace('Make_', '', 1).startswith('ScopeBack'): self.direct_keys |= 0x200          # (its back button: a direct button, see keyboard_mouse.DIRECT_BUTTONS)
             elif decl & ENGINE.B: q = self._port_for_gamepad(port, 0x20); eng.send_menu(q, 1, -1, 0x20); self.menu_to_release = q
             return
         lookup_key = (port, f['order']); cur = self.cur_local.get(lookup_key)

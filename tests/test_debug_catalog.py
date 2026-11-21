@@ -5,7 +5,7 @@ no game.
 
     python3 tests/test_debug_catalog.py
 """
-import os, struct, sys, unittest
+import os, struct, sys, types, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.join(HERE, '..')
 sys.path.insert(0, ROOT)
@@ -249,6 +249,28 @@ class Catalog(unittest.TestCase):
         self.assertEqual(self.c.minigame({'id': 'tnt'}), {'ok': True}); e.run_step_calls()
         self.assertEqual((given, entered), ([{'item': 178, 'count': 1}], ['mdc1b1']))
         self.assertIn('error', self.c.minigame({'id': 'monster_arena'}))                                                    # (not a DQ V game)
+
+    def test_minigame_from_the_world_map_goes_back_there(self):
+        """started on the world map: the followers' places kept first (as before a fight), then the game's end (Global::startTown of the world map, which is
+        no town) becomes Global::startField, once; started in a town, nothing changes"""
+        e = self.g.engine; core = e.core; key = self.c.key; e._global = lambda: 0x880
+        SYMS.update({CT.FIELD_RETURN[key]: 0x980, CT.START_FIELD: 0x984, '_ZN6Global11setMinigameEi': 0x964, '_ZN6Global11startCasinoEv': 0x968})
+        if key in CT.MINIGAME_CMD: SYMS[CT.MINIGAME_CMD[key][0]] = 0x96c
+        for fn in CT.SAVE_PARTY.get(key, ()): SYMS[fn] = 0x988
+        hooks = []; written = []
+        core.uc = types.SimpleNamespace(hook_add=lambda kind, cb, user, a, b: hooks.append((cb, a, b)))
+        core.C = types.SimpleNamespace(UC_ARM64_REG_PC=7); e._flush_tb = lambda why: None
+        self.c._field_return(); (cb, a, b), = hooks; self.assertEqual((a, b), (0x980, 0x980))
+        uc = types.SimpleNamespace(reg_write=lambda r, v: written.append((r, v)))
+        e.state.part = ENGINE.PART_FIELD
+        self.assertEqual(self.c.minigame({'id': 'poker'}), {'ok': True}); self.assertEqual(self.c.from_field, 'pending')
+        core.calls.clear(); e.run_step_calls()
+        if key in CT.SAVE_PARTY: self.assertEqual(core.calls[1][0], CT.SAVE_PARTY[key][1])                              # (before the mini-game's start)
+        cb(uc, 0x980, 4, None); self.assertEqual(written, [])                                                            # (not yet out of the world map)
+        e.state.part = ENGINE.PART_CASINO; self.c.tick(); self.assertEqual(self.c.from_field, 'armed')
+        cb(uc, 0x980, 4, None); self.assertEqual(written, [(7, 0x984)]); self.assertFalse(self.c.from_field)
+        cb(uc, 0x980, 4, None); self.assertEqual(len(written), 1)                                                         # (once)
+        e.state.part = ENGINE.PART_TOWN; self.c.minigame({'id': 'poker'}); self.assertFalse(self.c.from_field)
 
     def test_panel_commands_registered(self):
         for k in ('goto_map', 'goto_world', 'story_step', 'flag', 'battle', 'give_item', 'gold', 'battle_here', 'minigame', 'book', 'backdrop'): self.assertIn(k, self.d.panel_commands)

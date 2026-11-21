@@ -98,6 +98,7 @@ const T = {
        extras: 'Activités annexes', jobs: 'Vocations (niveau 0 à 8)', course: 'Piste', place: 'Place',
        ex_contest: 'Concours de style : rang (1 à 8)', ex_arena: 'Arène des gluants : rangs gagnés (0 à 8)', ex_curling_open: 'Curling : pistes ouvertes',
        ex_curling_best: 'Curling : meilleur score', ex_touch: 'Gluant à gogo : classement',
+       guest: 'invité (le jeu ne lui donne pas de niveau)',
        party: 'Équipe', members: 'Membres', level: 'Niveau', exp: 'Expérience', set: 'Mettre', remove: 'Retirer', join: 'Ajouter à l\'équipe', values: 'Argent et temps de jeu',
        v_gold: 'Or', v_bank: 'Banque', v_coins: 'Jetons de casino', v_medals: 'Mini-médailles', v_play_time: 'Temps de jeu (h:mm:ss)', allitems: 'Objets', items_btn: 'Tous les objets × 99 dans le sac',
        items_note: 'Tous les objets du jeu, y compris ceux que le jeu réserve au débogage.',
@@ -120,6 +121,7 @@ const T = {
        extras: 'Side activities', jobs: 'Vocations (level 0 to 8)', course: 'Course', place: 'Place',
        ex_contest: 'Fashion contest: rank (1 to 8)', ex_arena: 'Slime arena: ranks won (0 to 8)', ex_curling_open: 'Slime curling: courses open',
        ex_curling_best: 'Slime curling: best score', ex_touch: 'Slime Touch: ranking',
+       guest: 'guest (the game gives it no level)',
        party: 'Party', members: 'Members', level: 'Level', exp: 'Experience', set: 'Set', remove: 'Remove', join: 'Add to the party', values: 'Money and play time',
        v_gold: 'Gold', v_bank: 'Bank', v_coins: 'Casino tokens', v_medals: 'Mini medals', v_play_time: 'Play time (h:mm:ss)', allitems: 'Items', items_btn: 'Every item × 99 in the bag',
        items_note: 'Every item of the game, those the game keeps for debugging included.',
@@ -252,8 +254,9 @@ async function refreshParty(force) {
   refreshExtras(force);
   const p = await get('/api/party'); const key = JSON.stringify(p); if (!force && key === partyKey) return; partyKey = key; party = p;
   $('pa_members').innerHTML = `<table><tr><th></th><th>${L.level}</th><th></th><th>${L.exp}</th><th></th><th></th></tr>` + p.members.map(m =>
-    `<tr><td>${esc(m.name)} <span class="dim">#${m.id}</span></td><td><input size="3" id="pl_${m.id}" value="${m.level}"></td><td><button data-lv="${m.id}">${L.set}</button></td>` +
-    `<td><input size="9" id="px_${m.id}" value="${m.exp}"></td><td><button data-xp="${m.id}">${L.set}</button></td><td><button data-out="${m.id}">${L.remove}</button></td></tr>`).join('') + '</table>';
+    `<tr><td>${esc(m.name)} <span class="dim">#${m.id}</span></td>` + (m.guest ? `<td colspan="4" class="dim">${L.guest}</td>` :
+    `<td><input size="3" id="pl_${m.id}" value="${m.level}"></td><td><button data-lv="${m.id}">${L.set}</button></td>` +
+    `<td><input size="9" id="px_${m.id}" value="${m.exp}"></td><td><button data-xp="${m.id}">${L.set}</button></td>`) + `<td><button data-out="${m.id}">${L.remove}</button></td></tr>`).join('') + '</table>';
   const inside = new Set(p.members.map(m => m.id));
   $('pa_char').innerHTML = p.characters.filter(([n]) => !inside.has(n)).map(([n, name]) => `<option value="${n}">${esc(name)} — #${n}</option>`).join('');
   $('pa_values').innerHTML = Object.entries(p.values).map(([k, v]) => `<span class="dim">${esc(valueLabel(k))}</span><span class="row" style="margin:0"><input size="11" id="pv_${k}" value="${k === 'play_time' || k === 'stat:AdventureTime' ? hms(v) : v}"><button data-val="${k}">${L.set}</button></span>`).join('');

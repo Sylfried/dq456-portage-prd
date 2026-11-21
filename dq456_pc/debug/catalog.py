@@ -65,6 +65,10 @@ MINIGAMES = {'dq4': (('poker', 'cmd', 0), ('slots', 'cmd', 1), ('monster_arena',
 # DQ IV's monster arena: FightStadiumManager::setup (a match of the casino's table) then battleStart (its backdrop, its 4 monsters), as the casino's counter does;
 # DQ VI's slime arena: the scripts' own fight (script::cmdBattleSlimeArena: the rank of the arena's switches, the party of the moment, the backdrop of the place);
 # DQ V's T'n'T: its hall (the counter that sells the boards) with a T'n'T ticket (item 178) given, the board started by talking to the attendant as in the game.
+FIELD_RETURN = {'dq4': '_ZN6Global9startTownEPKc', 'dq5': '_ZN6Global9startTownEi', 'dq6': '_ZN6Global9startTownEi'}          # see Catalog._field_return
+START_FIELD = '_ZN6Global10startFieldEv'
+SAVE_PARTY = {'dq4': ('_ZN18FieldPlayerManager12getSingletonEv', '_ZN18FieldPlayerManager17savePartyDrawInfoEv'),       # the followers' places, kept as a
+              'dq5': ('_ZN3fld18FieldPlayerManager12getSingletonEv', '_ZN3fld18FieldPlayerManager17savePartyDrawInfoEv')}  # fight does (FieldSystem::execEncount)
 STADIUM = ('_ZN19FightStadiumManager12getSingletonEv', '_ZN19FightStadiumManager5setupEv', '_ZN19FightStadiumManager11battleStartEv')
 MINIGAME_CMD = {'dq4': ('_Z13cmd_mini_gameP16CommandParameter', 4), 'dq5': ('_Z11cmdMiniGamePv', 0)}          # (function, offset of the game number in its block)
 START_BOOK = '_ZN6Global9startBookEv'                                   # copies of an item given at once
@@ -245,10 +249,26 @@ class Catalog:
         self.pending = None                               # a boss waiting for its map: (row, map, engine frame of the request)
         self.restore = None                               # an ordinary fight of another row than the place's: (the place's row, engine frame of the request)
         service.ticks.append(self.tick)
+        self._field_return()
         service.panel_pages['/api/catalog'] = self.info
         service.panel_commands.update({'goto_map': self.goto_map, 'goto_world': self.goto_world, 'story_step': self.story_step, 'flag': self.set_flag, 'battle': self.battle,
                                          'give_item': self.give_item, 'gold': self.give_gold, 'battle_here': self.battle_here, 'minigame': self.minigame, 'book': self.open_book,
                                          'backdrop': self.set_backdrop})
+
+    def _field_return(self):
+        """A mini-game started from the world map (the panel's) ends with `Global::startTown` of the map it came from (DQ IV "field", DQ V 999, DQ VI the
+        world's own number): the world map is no town (no stage: the engine stopped on FldStage::getCameraLimitL). While `from_field` is set (the mini-game was
+        started on the world map), that call becomes `Global::startField` (same Global), the world map again; the game itself only starts these games from a
+        town, which it gets back to as before."""
+        self.from_field = False
+        try:
+            core = self.g.engine.core; a, f = core.export(FIELD_RETURN[self.key]), core.export(START_FIELD)
+            if not a or not f: return
+            def redirect(uc, addr, size, user):
+                if self.from_field == 'armed': self.from_field = False; uc.reg_write(core.C.UC_ARM64_REG_PC, f)
+            import unicorn
+            core.uc.hook_add(unicorn.UC_HOOK_CODE, redirect, None, a, a); self.g.engine._flush_tb('field return')
+        except Exception as ex: self.d.note('catalog: %s' % ex)
 
     def _take_in_step(self):
         """The calls queued for this step (Engine.step_calls), each one's error noted instead of stopping the step."""
@@ -526,7 +546,9 @@ class Catalog:
         if m is None: return {'error': tr(N_('debug.catalog_minigame_bad')) % c.get('id')}
         if self.g.engine.state.part not in (ENGINE.PART_TOWN, ENGINE.PART_FIELD): return {'error': tr(N_('debug.catalog_not_now'))}
         eng = self.g.engine; core = eng.core; _id, kind, arg = m
+        self.from_field = 'pending' if eng.state.part == ENGINE.PART_FIELD and kind in ('cmd', 'casino', 'global') else False          # (its end goes back to the world map: _field_return)
         def start():
+            self._save_party()
             if kind == 'cmd':
                 fn, off = MINIGAME_CMD[self.key]; block = bytearray(16); struct.pack_into('<i', block, off, arg)
                 p = core.scratch('catalog_minigame', len(block)); core.mem_w(p, bytes(block)); core.call(core.export(fn), p, label=fn)
@@ -562,8 +584,17 @@ class Catalog:
         """The monster book, from here (Global::startBook, as the menu does)."""
         if self.g.engine.state.part not in (ENGINE.PART_TOWN, ENGINE.PART_FIELD): return {'error': tr(N_('debug.catalog_not_now'))}
         eng = self.g.engine
-        self.in_step.append(lambda: eng.core.call(eng.core.export(START_BOOK), eng._global(), label='Global::startBook'))
+        def start(): self._save_party(); eng.core.call(eng.core.export(START_BOOK), eng._global(), label='Global::startBook')
+        self.in_step.append(start)
         self.d.note(tr(N_('debug.catalog_book'))); return {'ok': True}
+
+    def _save_party(self):
+        """On the world map, the followers' places kept before leaving it (as the game does before a fight): without it they walk back from stale places."""
+        eng = self.g.engine; fns = SAVE_PARTY.get(self.key)
+        if eng.state.part != ENGINE.PART_FIELD or not fns: return
+        core = eng.core; get, save = core.export(fns[0]), core.export(fns[1])
+        m = get and save and core.call(get, label=fns[0])
+        if m: core.call(save, m, label=fns[1])
 
     def boss_fight(self, row):
         """The boss of that row at its own place: its map is loaded first if needed, the fight starts once the map is shown and the player free (tick)."""
@@ -578,7 +609,12 @@ class Catalog:
 
     def tick(self):
         """Each loop frame: the place's encounter row back once an ordinary fight of another row has started; a boss waiting for its map starts when
-        the map is shown, faded in and the player free."""
+        the map is shown, faded in and the player free. A mini-game started on the world map: armed once its own part has started, forgotten once the
+        world map or a town is back (whatever brought it back: only the mini-game's end may become the world map, see _field_return)."""
+        if self.from_field:
+            p = self.g.engine.state.part; outside = p not in (ENGINE.PART_FIELD, ENGINE.PART_TOWN)
+            if self.from_field == 'pending' and outside: self.from_field = 'armed'
+            elif self.from_field == 'armed' and not outside: self.from_field = False
         if self.restore is not None:
             here, asked = self.restore; eng = self.g.engine
             if eng.state.part == ENGINE.PART_BATTLE or eng.frames - asked > ARRIVAL_STEPS:

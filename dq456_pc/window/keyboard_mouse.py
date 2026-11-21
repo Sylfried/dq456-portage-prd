@@ -22,7 +22,7 @@ def physical_key(reg, symbol):
 
 
 SECTION_LAST_STEPS = 30          # engine steps the party list has to show its previous page after ▲ (camera key), before its last member is touched
-DIRECT_BUTTONS = (('Make_MonsterEncyclopedia', 0x800), ('Make_ScopeBack', 0x200))          # buttons whose MenuParts + 0x4d is set (MenuPortItemTable): "Action" of the bestiary sheet (the three games), whose key is read
+DIRECT_BUTTONS = (('MonsterEncyclopedia', 0x800), ('ScopeBack', 0x200))          # buttons whose MenuParts + 0x4d is set (MenuPortItemTable): "Action" of the bestiary sheet (the three games), whose key is read
                                                                   # from the game's keys (book::BookMonsterDraw::execute: g_Pad trigger 0x800 -> startAnimation: the monster's attack and its sound effect), never from the
                                                                   # window; the back button of the scope views (DQ V / VI, gamepad 0x200). (The back buttons 0x400 have their own handling.)
 MAP_MODE_V2 = 1                    # DQ V / VI: gamepad key of the "map mode" button (type 22) and of the plan (type 25): decide, as on release of the finger (DQ IV: 2, up)
@@ -189,7 +189,8 @@ class KeyboardMouseMixin:
         """The game key of the button of gamepad `pad` in the window of `port` if it is one of the direct buttons (DIRECT_BUTTONS), otherwise 0. The button's gamepad can carry other bits
         than the direct key (DQ VI's bestiary "Action"): the key alone goes to the game."""
         f = self.engine.ui.f.get(port); name_str = self._type_name(f['type']) if f and f.get('type') is not None else None
-        return next((g for n, g in DIRECT_BUTTONS if name_str and name_str.startswith(n) and pad & g == g), 0)
+        bare = name_str[len('Make_'):] if name_str and name_str.startswith('Make_') else name_str          # (DQ IV's window names have no "Make_": its book's Action went to the window as a touch)
+        return next((g for n, g in DIRECT_BUTTONS if bare and bare.startswith(n) and pad & g == g), 0)
 
     def _close_map(self, game_map):
         """The map's back button (0x400 added to the game's keys). DQ VI's maps (fld::FieldImageMap::execute, state 7: the world map and the town plan with its shop list) only close

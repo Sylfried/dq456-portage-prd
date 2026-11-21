@@ -620,6 +620,7 @@
   {"key": "debug.texts_bad", "en": "not a message: %s", "text": "pas un message : %s"},
   {"key": "debug.texts_not_here", "en": "messages are shown in a town, a dungeon or on the world map only", "text": "les messages s'affichent seulement en ville, dans un donjon ou sur la carte du monde"},
   {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "un message est déjà affiché : fermez-le d'abord"},
-  {"key": "debug.texts_shown", "en": "message %d shown", "text": "message %d affiché"}
+  {"key": "debug.texts_shown", "en": "message %d shown", "text": "message %d affiché"},
+  {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "le personnage %d est un invité : le jeu ne lui donne pas de niveau"}
  ]
 }

@@ -620,6 +620,7 @@
   {"key": "debug.texts_bad", "en": "not a message: %s", "text": "메시지가 아님: %s"},
   {"key": "debug.texts_not_here", "en": "messages are shown in a town, a dungeon or on the world map only", "text": "메시지는 마을, 던전, 월드맵에서만 표시됩니다"},
   {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "메시지가 이미 표시 중: 먼저 닫으세요"},
-  {"key": "debug.texts_shown", "en": "message %d shown", "text": "메시지 %d 표시"}
+  {"key": "debug.texts_shown", "en": "message %d shown", "text": "메시지 %d 표시"},
+  {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "캐릭터 %d은(는) 게스트라 레벨이 없습니다"}
  ]
 }

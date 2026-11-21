@@ -51,6 +51,15 @@ class Keys(unittest.TestCase):
         j._cursor = types.MethodType(inspect.getattr_static(WND.Game, '_cursor'), j)
         return j
 
+    def test_book_action_is_a_direct_button(self):
+        """the bestiary's Action: its key alone goes to the game, whether the window's name has "Make_" or not (DQ IV's names have none)"""
+        from dq456_pc.window import keyboard_mouse as KM
+        for name in ('Make_MonsterEncyclopedia', 'MonsterEncyclopedia', 'ScopeBack'):
+            j = types.SimpleNamespace(engine=types.SimpleNamespace(ui=types.SimpleNamespace(f={PORT: {'type': 28}})), _type_name=lambda t, n=name: n)
+            want = 0x200 if name == 'ScopeBack' else 0x800
+            self.assertEqual(KM.KeyboardMouseMixin._direct_button(j, PORT, want | 0x10), want)
+            self.assertEqual(KM.KeyboardMouseMixin._direct_button(j, PORT, 0x10), 0)
+
     def test_cancel_button_with_a_number(self):
         j = self.game(SHOP_ROOT)
         self.assertEqual(set(j._cursor_targets(j.ui_g.f[PORT])), {0, 1, (MD.CANCEL, 12)})

@@ -58,7 +58,7 @@ class PartyTab(unittest.TestCase):
 
     def test_members_and_values(self):
         i = self.p.info()
-        self.assertEqual(i['members'], [{'id': 2, 'name': 'Sofià', 'level': 33, 'exp': 324650}, {'id': 3, 'name': 'Ragnar', 'level': 30, 'exp': 172959}])
+        self.assertEqual(i['members'], [{'id': 2, 'name': 'Sofià', 'level': 33, 'exp': 324650, 'guest': False}, {'id': 3, 'name': 'Ragnar', 'level': 30, 'exp': 172959, 'guest': False}])
         self.assertEqual(i['characters'], [(2, 'Sofià'), (3, 'Ragnar'), (4, 'Alina')])
         self.assertEqual(i['values']['gold'], 631)
 
@@ -69,6 +69,16 @@ class PartyTab(unittest.TestCase):
         self.assertEqual(self.p.set_exp({'id': 3, 'exp': 1000}), {'ok': True})
         self.assertIn(('HaveStatusInfo::setExp', (hsi, 1000)), self.core.calls)
         for bad in ({'id': 3, 'level': 0}, {'id': 3, 'level': 100}, {'id': 9, 'level': 5}): self.assertIn('error', self.p.set_level(bad))
+
+    def test_guest_has_no_level(self):
+        """a guest (DQ IV's Doc in the wagon: level 255, experience 0xffffffff) is shown as such; setting its level or experience is refused, and so is a call the
+        engine could not finish (the port's core answers None)"""
+        hs = ORIG + ENGINE.PLAYER_STRIDE * 2 + ENGINE.PLAYER_HAVESTATUS; self.core.ram[hs + PY.LEVEL_AT['dq4']] = 255
+        self.assertTrue(self.p.members()[0]['guest'])
+        self.assertIn('error', self.p.set_level({'id': 2, 'level': 5})); self.assertIn('error', self.p.set_exp({'id': 2, 'exp': 5}))
+        self.assertFalse([c for c in self.core.calls if c[0] in ('HaveStatusInfo::levelup', 'HaveStatusInfo::setExp')])
+        call = self.core.call; self.core.call = lambda f, *a, label=None: None if label == 'HaveStatusInfo::levelup' else call(f, *a, label=label)
+        self.assertIn('error', self.p.set_level({'id': 3, 'level': 5}))
 
     def test_join_and_quit_during_the_step(self):
         self.assertEqual(self.p.join({'id': 4}), {'ok': True})

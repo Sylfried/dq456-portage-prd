@@ -641,6 +641,7 @@
   {"key": "debug.texts_bad", "en": "not a message: %s", "text": "not a message: %s"},
   {"key": "debug.texts_not_here", "en": "messages are shown in a town, a dungeon or on the world map only", "text": "messages are shown in a town, a dungeon or on the world map only"},
   {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "a message is already shown: close it first"},
-  {"key": "debug.texts_shown", "en": "message %d shown", "text": "message %d shown"}
+  {"key": "debug.texts_shown", "en": "message %d shown", "text": "message %d shown"},
+  {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "character %d is a guest: the game gives it no level"}
  ]
 }

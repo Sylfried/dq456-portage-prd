@@ -41,6 +41,7 @@ SACK = {'dq4': 0x10, 'dq5': 0x28, 'dq6': 0x28}
 SACK_ADD = '_ZN6status12HaveItemSack3addEii'
 SACK_VTABLE = '_ZTVN6status12HaveItemSackE'
 ITEM_FULL = 99
+LEVEL_MAX, EXP_MAX = 99, 9999999
 
 
 def history_fn(kind, field, arg):
@@ -97,7 +98,9 @@ class Party:
         c = self._core(); names = dict(self.characters()); out = []
         for number, hsi in self._status_infos():
             hs = hsi + HAVE_STATUS[self.key]
-            out.append({'id': number, 'name': names.get(number) or '#%d' % number, 'level': c.mem(hs + LEVEL_AT[self.key], 1)[0], 'exp': struct.unpack('<I', c.mem(hs + 8, 4))[0]})
+            level = c.mem(hs + LEVEL_AT[self.key], 1)[0]
+            out.append({'id': number, 'name': names.get(number) or '#%d' % number, 'level': level, 'exp': struct.unpack('<I', c.mem(hs + 8, 4))[0],
+                        'guest': level > LEVEL_MAX})          # (a guest the game gives no status: level 255, experience 0xffffffff; its level cannot be set)
         return out
 
     def values(self):
@@ -119,13 +122,18 @@ class Party:
         except (TypeError, ValueError): n = None
         return next((hsi for number, hsi in self._status_infos() if number == n), None), n
 
+    def _guest(self, hsi):
+        return self._core().mem(hsi + HAVE_STATUS[self.key] + LEVEL_AT[self.key], 1)[0] > LEVEL_MAX
+
     def set_level(self, c):
         hsi, n = self._member(c)
         try: level = int(c.get('level'))
         except (TypeError, ValueError): level = 0
         if hsi is None: return {'error': tr(N_('debug.party_not_member')) % n}
-        if not 1 <= level <= 99: return {'error': tr(N_('debug.party_level_bad')) % c.get('level')}
-        core = self._core(); core.call(core.export(LEVELUP), hsi, level, label='HaveStatusInfo::levelup')
+        if not 1 <= level <= LEVEL_MAX: return {'error': tr(N_('debug.party_level_bad')) % c.get('level')}
+        if self._guest(hsi): return {'error': tr(N_('debug.party_guest')) % n}
+        core = self._core()
+        if core.call(core.export(LEVELUP), hsi, level, label='HaveStatusInfo::levelup') is None: return {'error': tr(N_('debug.party_guest')) % n}
         self.d.note(tr(N_('debug.party_level')) % (n, level)); return {'ok': True}
 
     def set_exp(self, c):
@@ -133,8 +141,10 @@ class Party:
         try: exp = int(c.get('exp'))
         except (TypeError, ValueError): exp = -1
         if hsi is None: return {'error': tr(N_('debug.party_not_member')) % n}
-        if not 0 <= exp <= 9999999: return {'error': tr(N_('debug.party_exp_bad')) % c.get('exp')}
-        core = self._core(); core.call(core.export(SET_EXP), hsi, exp, label='HaveStatusInfo::setExp')
+        if not 0 <= exp <= EXP_MAX: return {'error': tr(N_('debug.party_exp_bad')) % c.get('exp')}
+        if self._guest(hsi): return {'error': tr(N_('debug.party_guest')) % n}
+        core = self._core()
+        if core.call(core.export(SET_EXP), hsi, exp, label='HaveStatusInfo::setExp') is None: return {'error': tr(N_('debug.party_guest')) % n}
         self.d.note(tr(N_('debug.party_exp')) % (n, exp)); return {'ok': True}
 
     def _command(self, which, c):
