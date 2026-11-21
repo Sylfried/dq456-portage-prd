@@ -616,6 +616,7 @@
   {"key": "debug.texts_not_here", "en": "messages are shown in a town, a dungeon or on the world map only", "text": "消息只能在城镇、迷宫或世界地图中显示"},
   {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "已有消息显示：请先关闭"},
   {"key": "debug.texts_shown", "en": "message %d shown", "text": "已显示消息%d"},
-  {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "角色%d是客人：游戏不给其等级"}
+  {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "角色%d是客人：游戏不给其等级"},
+  {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "请输入文本（最多 %d 个字符）"}
  ]
 }

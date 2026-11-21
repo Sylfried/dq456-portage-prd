@@ -616,6 +616,7 @@
   {"key": "debug.texts_not_here", "en": "messages are shown in a town, a dungeon or on the world map only", "text": "Nachrichten nur in einer Stadt, einem Dungeon oder auf der Weltkarte"},
   {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "eine Nachricht wird schon angezeigt: zuerst schließen"},
   {"key": "debug.texts_shown", "en": "message %d shown", "text": "Nachricht %d angezeigt"},
-  {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "Figur %d ist ein Gast: das Spiel gibt ihr keine Stufe"}
+  {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "Figur %d ist ein Gast: das Spiel gibt ihr keine Stufe"},
+  {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "einen Text eingeben (höchstens %d Zeichen)"}
  ]
 }

@@ -39,7 +39,7 @@ class TextsTab(unittest.TestCase):
     def texts(self, key='dq5', part=ENGINE.PART_TOWN, msg=False):
         gm = TX.GM; TX.GM = types.SimpleNamespace(profile=lambda: types.SimpleNamespace(key=key)); self.addCleanup(setattr, TX, 'GM', gm)
         core = Core(); eng = types.SimpleNamespace(core=core, state=types.SimpleNamespace(part=part), msg_visible=msg)
-        s = types.SimpleNamespace(g=types.SimpleNamespace(engine=eng), panel_pages={}, panel_commands={}, notes=[]); s.note = s.notes.append
+        s = types.SimpleNamespace(g=types.SimpleNamespace(engine=eng), panel_pages={}, panel_commands={}, notes=[], ticks=[]); s.note = s.notes.append
         cat = types.SimpleNamespace(in_step=[])
         return TX.Texts(s, cat), core, cat, s
 
@@ -51,6 +51,35 @@ class TextsTab(unittest.TestCase):
         self.assertEqual(e['entries'], [(0, 834003, 'Sauvegarder ?'), (3, 834006, 'Sancho : S-Señor ! Oun bébé ; oui.'), (75, 834078, 'Retour à l\'écran titre.')])
         self.assertIn('error', t.info({'file': 'b9999000.mpt'}))
         self.assertIn('/api/texts', s.panel_pages); self.assertIn('show_text', s.panel_commands)
+
+    def test_custom_text(self):
+        """any text: a message of the game carries it (the first of the first file); msg_find's cache emptied for that number, its text and length replaced right
+        after msg_find_sub (once), the cache emptied again once the window has closed (the carrier's own text back); DQ IV's n and r as its font draws them"""
+        import unicorn
+        R = unicorn.arm64_const
+        for key, typed in (('dq5', 'Bonjour,\nmonde'), ('dq4', 'Bonjour')):
+            t, core, cat, s = self.texts(key)
+            hooks = []; core.uc = types.SimpleNamespace(hook_add=lambda kind, cb, user, a, b: hooks.append((a, cb)))
+            core.export = lambda n: 0x1000 if n == TX.MSG_FIND[key] else 0x900 if n in [v[0] for v in TX.MESSAGE_CMD.values()] else None
+            core.scratch = lambda name, n: {'text_block': 0x40, 'text_command': 0x100, 'custom_text': 0x180}[name]
+            t.g.engine._flush_tb = lambda why: None
+            self.assertIn('error', t.show_custom({'text': '  '})); self.assertIn('error', t.show_custom({'text': 'x' * (TX.CUSTOM_MAX + 1)}))
+            if key == 'dq4': FILE_DQ4 = mpt(834003, {0: '@a@bSauvegaяdeя ?\n@c0@'}); core.fs.names['assets/msg/en/b0834000.mpt'] = type('R', (), {'read': lambda s, n: FILE_DQ4})(); t._files = None
+            self.assertEqual(t.show_custom({'text': typed}), {'ok': True, 'number': 834003}); self.assertEqual(s.panel_commands['show_custom'], t.show_custom)
+            (go,) = cat.in_step; go()
+            hooks = dict(hooks); self.assertEqual(sorted(hooks), [0x1000, 0x1000 + TX.AFTER_SUB])
+            mem = bytearray(0x400); regs = {}
+            uc = types.SimpleNamespace(reg_read=lambda r: regs[r], mem_read=lambda a, n: bytes(mem[a:a + n]), mem_write=lambda a, b: mem.__setitem__(slice(a, a + len(b)), b))
+            obj = 0x10; struct.pack_into('<i', mem, obj + TX.NUMBER_AT, 834003)
+            regs.update({R.UC_ARM64_REG_X0: obj, R.UC_ARM64_REG_X1: 834003}); hooks[0x1000](uc, 0x1000, 4, None)
+            self.assertEqual(struct.unpack_from('<i', mem, obj + TX.NUMBER_AT)[0], -1)                           # (the cache emptied)
+            struct.pack_into('<i', mem, obj + TX.NUMBER_AT, 834003); regs.update({R.UC_ARM64_REG_X0: 1, R.UC_ARM64_REG_X19: obj}); hooks[0x1000 + TX.AFTER_SUB](uc, 0, 4, None)
+            want = ('@a@b%s\n@c0@' % (typed if key != 'dq4' else 'Boиjouя')).encode()
+            self.assertEqual(struct.unpack_from('<QI', mem, obj + TX.TEXT_AT)[0], 0x180); self.assertEqual(struct.unpack_from('<I', mem, obj + TX.LENGTH_AT)[0], len(want))
+            self.assertEqual(bytes(mem[0x180:0x180 + len(want)]), want); self.assertEqual(t.custom['state'], 'shown')
+            regs[R.UC_ARM64_REG_X0] = obj; hooks[0x1000](uc, 0x1000, 4, None); self.assertEqual(struct.unpack_from('<i', mem, obj + TX.NUMBER_AT)[0], 834003)          # (shown: the cache kept)
+            t.tick(); t.g.engine.msg_visible = True; t.tick(); t.g.engine.msg_visible = False; t.tick(); self.assertEqual(t.custom['state'], 'done')
+            hooks[0x1000](uc, 0x1000, 4, None); self.assertEqual(struct.unpack_from('<i', mem, obj + TX.NUMBER_AT)[0], -1); self.assertIsNone(t.custom)          # (its own text again)
 
     def test_number_or_key(self):
         t, *_ = self.texts()

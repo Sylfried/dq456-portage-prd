@@ -616,6 +616,7 @@
   {"key": "debug.texts_not_here", "en": "messages are shown in a town, a dungeon or on the world map only", "text": "メッセージは町・ダンジョン・ワールドマップでのみ表示できます"},
   {"key": "debug.texts_busy", "en": "a message is already shown: close it first", "text": "メッセージ表示中です。先に閉じてください"},
   {"key": "debug.texts_shown", "en": "message %d shown", "text": "メッセージ%dを表示"},
-  {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "キャラクター%dはゲストで、レベルがありません"}
+  {"key": "debug.party_guest", "en": "character %d is a guest: the game gives it no level", "text": "キャラクター%dはゲストで、レベルがありません"},
+  {"key": "debug.texts_custom_bad", "en": "type a text (at most %d characters)", "text": "テキストを入力してください（最大 %d 文字）"}
  ]
 }

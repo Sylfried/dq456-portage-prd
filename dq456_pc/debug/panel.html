@@ -67,6 +67,8 @@ pre { background: #101216; padding: 8px; overflow: auto; max-height: 60vh; }
     <div class="row"><input id="tx_num" size="22"><label><span id="l_tx_n"></span> <input id="tx_n" value="1" size="3"></label>
       <button id="tx_prev">◀</button><button id="tx_show"></button><button id="tx_next">▶</button></div>
     <p class="dim" id="tx_note"></p>
+    <h4 id="h_tx_custom"></h4><textarea id="tx_custom" rows="3" cols="64" maxlength="400"></textarea>
+    <div class="row"><button id="tx_custom_show"></button><span class="dim" id="tx_custom_count"></span></div>
   </section>
   <section id="t_packets"><div class="row"><label><input type="checkbox" id="pk_follow" checked> <span id="l_follow"></span></label>
     <input id="pk_filter" placeholder="types: 22 28 / !22 !28 !29" size="28"><span class="dim" id="pk_count"></span></div><pre id="packets"></pre></section>
@@ -92,7 +94,7 @@ const T = {
        tr_pl: 'Plaine', tr_mt: 'Montagne', tr_wd: 'Forêt', tr_sd: 'Désert', tr_se: 'Mer', tr_po: 'Marais', tr_sn: 'Neige', tr_is: 'Plage', tr_dk: 'Monde des ténèbres', tr_ds: 'Fond marin',
        time_d: 'jour', time_e: 'soir', time_n: 'nuit', time_dk: 'monde des ténèbres', unknown_place: 'lieu inconnu', mini: 'Mini-jeux et livre',
        mg_poker: 'Poker', mg_slots: 'Machines à sous', mg_slime_race: 'Course de gluants', mg_slime_touch: 'Gluant à gogo', mg_curling: 'Curling de gluants', mg_monster_arena: 'Arène des monstres', mg_slime_arena: 'Arène des gluants', mg_tnt: 'Jeu TNT (salle, avec un ticket)', book: 'Livre des monstres',
-       texts: 'Textes', tx_show: 'Afficher dans le jeu', tx_n: 'messages à la suite', tx_count: '%s messages',
+       texts: 'Textes', tx_custom: 'Texte libre (une ligne par ligne de la fenêtre)', tx_custom_show: 'Afficher ce texte dans le jeu', tx_show: 'Afficher dans le jeu', tx_n: 'messages à la suite', tx_count: '%s messages',
        tx_note: 'Le message s\'ouvre dans la vraie fenêtre du jeu, là où est le héros (ville, donjon ou carte du monde), comme un script l\'affiche ; on le tourne et le ferme comme d\'habitude. Numéro du message ou clé bXXXXXXX.mpt#N.',
        bk_all: 'Tout le livre à 100 %', bk_none: 'Vider le livre', bk_seen: 'dans le livre', bk_defeated: 'vaincus', bk_items: 'objet obtenu',
        bk_note: 'Cocher met le monstre dans le livre (vaincu une fois et son objet obtenu une fois s\'il n\'y était pas) ; décocher le retire.', bk_count: '%s / %s pages',
@@ -117,7 +119,7 @@ const T = {
        tr_pl: 'Plains', tr_mt: 'Mountains', tr_wd: 'Forest', tr_sd: 'Desert', tr_se: 'Sea', tr_po: 'Swamp', tr_sn: 'Snow', tr_is: 'Beach', tr_dk: 'Dark world', tr_ds: 'Sea floor',
        time_d: 'day', time_e: 'evening', time_n: 'night', time_dk: 'dark world', unknown_place: 'unknown place', mini: 'Mini-games and book',
        mg_poker: 'Poker', mg_slots: 'Slot machines', mg_slime_race: 'Slime race', mg_slime_touch: 'Slime touch', mg_curling: 'Slime curling', mg_monster_arena: 'Monster arena', mg_slime_arena: 'Slime arena', mg_tnt: 'T\'n\'T (its hall, with a ticket)', book: 'Monster book',
-       texts: 'Texts', tx_show: 'Show in the game', tx_n: 'messages in a row', tx_count: '%s messages',
+       texts: 'Texts', tx_custom: 'Any text (one line per line of the window)', tx_custom_show: 'Show this text in the game', tx_show: 'Show in the game', tx_n: 'messages in a row', tx_count: '%s messages',
        tx_note: 'The message opens in the game\'s real window, where the hero is (town, dungeon or world map), as a script shows it; turn and close it as usual. Message number or key bXXXXXXX.mpt#N.',
        bk_all: 'Whole book at 100 %', bk_none: 'Empty the book', bk_seen: 'in the book', bk_defeated: 'defeated', bk_items: 'item obtained',
        bk_note: 'Ticking puts the monster in the book (defeated once and its item obtained once if it was not there); unticking takes it out.', bk_count: '%s / %s pages',
@@ -140,7 +142,7 @@ function texts() {
   for (const a of document.querySelectorAll('nav a')) a.onclick = () => { tab = a.dataset.t; texts(); show(); refresh(); };
   for (const [id, k] of [['h_map', 'maph'], ['sc_go', 'go'], ['sc_world', 'world'], ['h_step', 'step'], ['l_step_go', 'step_go'], ['sc_apply', 'apply'], ['sc_step_note', 'step_note'],
     ['sc_backdrop_go', 'backdrop_go'], ['h_mini', 'mini'],
-    ['tx_show', 'tx_show'], ['l_tx_n', 'tx_n'], ['tx_note', 'tx_note'],
+    ['tx_show', 'tx_show'], ['l_tx_n', 'tx_n'], ['tx_note', 'tx_note'], ['h_tx_custom', 'tx_custom'], ['tx_custom_show', 'tx_custom_show'],
     ['bk_all', 'bk_all'], ['bk_none', 'bk_none'], ['bk_note', 'bk_note'],
     ['h_extras', 'extras'], ['h_jobs', 'jobs'],
     ['h_members', 'members'], ['pa_join', 'join'], ['h_values', 'values'], ['h_allitems', 'allitems'], ['pa_items', 'items_btn'], ['pa_items_note', 'items_note'],
@@ -334,6 +336,8 @@ $('tx_find').oninput = renderTexts;
 $('tx_list').onchange = () => { $('tx_num').value = textKey(); };
 $('tx_list').ondblclick = () => { $('tx_num').value = textKey(); showText(); };
 $('tx_show').onclick = showText;
+$('tx_custom').oninput = () => { $('tx_custom_count').textContent = $('tx_custom').value.length + ' / 400'; };
+$('tx_custom_show').onclick = () => cmd({cmd: 'show_custom', text: $('tx_custom').value});
 $('tx_prev').onclick = () => stepText(-1);
 $('tx_next').onclick = () => stepText(1);
 const PAGES = {t_texts: refreshTexts, t_book: refreshBook, t_party: refreshParty, t_scenes: refreshScenes, t_packets: refreshPackets, t_menus: refreshMenus, t_objects: refreshObjects, t_states: refreshStates};
